@@ -118,14 +118,14 @@ app.use('/api', apiLimiter);
 // API routes
 app.use('/api/v1', routes);
 
-// Root endpoint
+// Root endpoint - simple health/info response
 app.get('/', (req: Request, res: Response) => {
-  res.json({
+  return res.json({
+    status: 'ok',
     name: 'Mockomi API',
-    version: '1.0.0',
-    description: 'Job Portal Platform with Mock Interview System',
-    documentation: `${req.protocol}://${req.get('host')}/api-docs`,
-    health: `${req.protocol}://${req.get('host')}/api/v1/health`,
+    env: config.env,
+    apiBase: '/api/v1',
+    docs: '/api-docs',
   });
 });
 
