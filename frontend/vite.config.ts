@@ -22,7 +22,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://mockomi.com',
+        target: 'https://server.mockomi.com',
         changeOrigin: true,
         secure: false,
       },
