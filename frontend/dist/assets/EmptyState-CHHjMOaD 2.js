@@ -1,0 +1,2 @@
+import{j as e,c as r}from"./ui-CYsdiTaZ.js";const c=({icon:t,title:x,description:s,action:m,className:a})=>e.jsxs("div",{className:r("flex flex-col items-center justify-center py-12 text-center",a),children:[t&&e.jsx("div",{className:"mb-4 text-gray-400",children:t}),e.jsx("h3",{className:"text-lg font-medium text-gray-900",children:x}),s&&e.jsx("p",{className:"mt-2 text-sm text-gray-500 max-w-sm",children:s}),m&&e.jsx("div",{className:"mt-6",children:m})]});export{c as E};
+//# sourceMappingURL=EmptyState-CHHjMOaD.js.map
