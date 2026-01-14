@@ -11,7 +11,6 @@ import {
   CheckCircleIcon,
   ArrowDownTrayIcon,
   ArrowUpRightIcon,
-  XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { DashboardLayout } from '@/components/layout';
 import { Button, Card, Spinner, Badge, Modal, Input } from '@/components/ui';

@@ -243,6 +243,7 @@ export interface Salary {
 }
 
 export interface Job {
+  jobType: any;
   _id: string;
   title: string;
   company: CompanyProfile;
