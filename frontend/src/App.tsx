@@ -71,12 +71,11 @@ const App: React.FC = () => {
     <React.Suspense fallback={<LoadingState fullScreen />}>
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={isAuthenticated ? <Navigate to="/jobs" replace /> : <HomePage />} />
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/jobs" replace /> : <LoginPage />} />
-        <Route path="/register" element={isAuthenticated ? <Navigate to="/jobs" replace /> : <RegisterPage />} />
-        <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/jobs" replace /> : <ForgotPasswordPage />} />
-        <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/jobs" replace /> : <ResetPasswordPage />} />
-
+        <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <HomePage />} />
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
+        <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
+        <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ResetPasswordPage />} />
         {/* Jobs public listing */}
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />

@@ -1,8 +1,8 @@
 import React, { useState, Fragment } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
-import { clsx } from 'clsx';
+// import { clsx } from 'clsx';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 
@@ -12,19 +12,19 @@ interface PublicLayoutProps {
 
 const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
+  // const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuthStore();
 
-  const navigation = [
-    { name: 'Home', href: '/' },
-    { name: 'Jobs', href: '/jobs' },
-    { name: 'For Employers', href: '/employers' },
-    { name: 'For Interviewers', href: '/interviewers' },
-    { name: 'About', href: '/about' },
-  ];
+  // const navigation = [
+  //   { name: 'Home', href: '/' },
+  //   { name: 'Jobs', href: '/jobs' },
+  //   { name: 'For Employers', href: '/employers' },
+  //   { name: 'For Interviewers', href: '/interviewers' },
+  //   { name: 'About', href: '/about' },
+  // ];
 
-  const isActive = (href: string) => location.pathname === href;
+  // const isActive = (href: string) => location.pathname === href;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -37,7 +37,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
           </Link>
 
           {/* Desktop navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          {/* <div className="hidden md:flex items-center gap-8">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -52,7 +52,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
                 {item.name}
               </Link>
             ))}
-          </div>
+          </div> */}
 
           {/* Auth buttons */}
           <div className="hidden md:flex items-center gap-4">
@@ -124,7 +124,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
 
                 <div className="mt-6 flow-root">
                   <div className="-my-6 divide-y divide-gray-200">
-                    <div className="space-y-2 py-6">
+                    {/* <div className="space-y-2 py-6">
                       {navigation.map((item) => (
                         <Link
                           key={item.name}
@@ -140,7 +140,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
                           {item.name}
                         </Link>
                       ))}
-                    </div>
+                    </div> */}
                     <div className="py-6 space-y-3">
                       {isAuthenticated ? (
                         <Button

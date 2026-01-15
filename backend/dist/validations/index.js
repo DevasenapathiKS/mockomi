@@ -125,7 +125,17 @@ exports.jobSeekerProfileSchema = zod_1.z.object({
     }).optional(),
     education: zod_1.z.array(exports.educationSchema).optional(),
     experience: zod_1.z.array(exports.workExperienceSchema).optional(),
-    skills: zod_1.z.array(exports.skillSchema).optional(),
+    // Accept either full skill objects or simple strings (fallback)
+    skills: zod_1.z
+        .array(zod_1.z.union([
+        exports.skillSchema,
+        zod_1.z.string().transform((val) => ({
+            name: val,
+            level: 'intermediate',
+            yearsOfExperience: 0,
+        })),
+    ]))
+        .optional(),
     projects: zod_1.z.array(exports.projectSchema).optional(),
     certifications: zod_1.z.array(exports.certificationSchema).optional(),
     socialLinks: exports.socialLinksSchema.optional(),

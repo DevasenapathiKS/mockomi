@@ -24,7 +24,7 @@ const DashboardPage: React.FC = () => {
 
   const renderJobSeekerDashboard = () => (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      <Card hover>
+      {/* <Card hover>
         <CardContent className="flex items-center gap-4">
           <div className="p-3 bg-primary-100 rounded-xl">
             <DocumentTextIcon className="h-8 w-8 text-primary-600" />
@@ -58,7 +58,7 @@ const DashboardPage: React.FC = () => {
             <p className="text-2xl font-bold text-gray-900">45</p>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       <Card className="md:col-span-2 lg:col-span-3">
         <CardHeader>

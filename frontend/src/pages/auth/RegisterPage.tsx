@@ -54,12 +54,12 @@ const roleOptions: UserRoleOption[] = [
     description: 'Find jobs and practice interviews',
     icon: '🎯',
   },
-  {
-    value: 'employer',
-    label: 'Employer',
-    description: 'Post jobs and find candidates',
-    icon: '🏢',
-  },
+  // {
+  //   value: 'employer',
+  //   label: 'Employer',
+  //   description: 'Post jobs and find candidates',
+  //   icon: '🏢',
+  // },
   {
     value: 'interviewer',
     label: 'Interviewer',

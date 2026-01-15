@@ -147,7 +147,19 @@ export const jobSeekerProfileSchema = z.object({
   }).optional(),
   education: z.array(educationSchema).optional(),
   experience: z.array(workExperienceSchema).optional(),
-  skills: z.array(skillSchema).optional(),
+  // Accept either full skill objects or simple strings (fallback)
+  skills: z
+    .array(
+      z.union([
+        skillSchema,
+        z.string().transform((val) => ({
+          name: val,
+          level: 'intermediate' as const,
+          yearsOfExperience: 0,
+        })),
+      ])
+    )
+    .optional(),
   projects: z.array(projectSchema).optional(),
   certifications: z.array(certificationSchema).optional(),
   socialLinks: socialLinksSchema.optional(),

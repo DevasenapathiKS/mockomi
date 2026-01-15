@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { motion } from 'framer-motion';
@@ -24,6 +24,7 @@ import { JobType, JobPreferences } from '@/types';
 interface ExperienceEntry {
   company: string;
   title: string;
+  employmentType: 'full_time' | 'part_time' | 'contract' | 'freelance' | 'internship';
   location?: string;
   startDate: string;
   endDate?: string;
@@ -35,6 +36,7 @@ interface EducationEntry {
   institution: string;
   degree: string;
   field: string;
+  level: 'high_school' | 'diploma' | 'bachelors' | 'masters' | 'phd' | 'other';
   startDate: string;
   endDate?: string;
   current: boolean;
@@ -321,6 +323,24 @@ const ProfilePage: React.FC = () => {
 
   // Saving of basic info is handled together in onSubmit
 
+  // Derive a reasonable completeness percentage if backend value is missing/zero
+  const completionPercent = useMemo(() => {
+    if (typeof profile?.profileCompleteness === 'number' && profile.profileCompleteness > 0) {
+      return profile.profileCompleteness;
+    }
+    const checks = [
+      Boolean(user?.firstName),
+      Boolean(user?.lastName),
+      Boolean((user as any)?.phone || phone),
+      Boolean(profile?.headline || watch('headline')),
+      Boolean(profile?.summary || watch('summary')),
+      (profile?.skills?.length || watch('skills')?.length || 0) > 0,
+      (profile?.education?.length || watch('education')?.length || 0) > 0,
+    ];
+    const score = Math.round((checks.filter(Boolean).length / checks.length) * 100);
+    return isComplete ? 100 : score;
+  }, [profile, user, phone, isComplete, watch]);
+
   const tabs = [
     { id: 'basic', label: 'Basic Info', icon: UserIcon },
     { id: 'experience', label: 'Experience', icon: BriefcaseIcon },
@@ -342,10 +362,10 @@ const ProfilePage: React.FC = () => {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-start mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600 mt-1">Manage your job seeker profile</p>
+            <p className="text-gray-600 mt-1">Create a strong profile to get better matches and interviews.</p>
           </div>
           {!isEditing ? (
             <Button onClick={() => setIsEditing(true)}>
@@ -353,13 +373,11 @@ const ProfilePage: React.FC = () => {
               Edit Profile
             </Button>
           ) : (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancelEdit}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit(onSubmit)} isLoading={updateProfile.isPending || updateBasicInfo.isPending || uploadAvatar.isPending} disabled={!firstName || !lastName}>
-                Save Changes
-              </Button>
+            <div className="flex flex-col items-end gap-1 text-right">
+              <span className="text-xs font-semibold uppercase tracking-wide text-primary-600">Editing mode</span>
+              <span className="text-xs text-gray-500 max-w-xs">
+                Review your details below, then save your changes using the bar at the bottom.
+              </span>
             </div>
           )}
         </div>
@@ -411,12 +429,12 @@ const ProfilePage: React.FC = () => {
                   {user?.firstName} {user?.lastName}
                 </h2>
               )}
-              <p className="text-gray-600">{profile?.headline || 'Add your headline'}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="info">
-                  {profile?.profileCompleteness || 0}% Complete
-                </Badge>
-              </div>
+                  <p className="text-gray-600">{profile?.headline || 'Add your headline'}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="info">
+                      {completionPercent}% Complete
+                    </Badge>
+                  </div>
             </div>
           </div>
         </Card>
@@ -477,7 +495,7 @@ const ProfilePage: React.FC = () => {
         </div>
 
         {/* Tab Content */}
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 pb-20">
           {activeTab === 'basic' && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -587,6 +605,22 @@ const ProfilePage: React.FC = () => {
                       disabled={!isEditing}
                       {...register(`experience.${index}.company`)}
                     />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Employment Type
+                      </label>
+                      <select
+                        disabled={!isEditing}
+                        className="block w-full px-4 py-2.5 text-gray-900 bg-white border rounded-lg border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        {...register(`experience.${index}.employmentType` as const)}
+                      >
+                        <option value="full_time">Full-time</option>
+                        <option value="part_time">Part-time</option>
+                        <option value="contract">Contract</option>
+                        <option value="freelance">Freelance</option>
+                        <option value="internship">Internship</option>
+                      </select>
+                    </div>
                     <Input
                       label="Location"
                       disabled={!isEditing}
@@ -623,6 +657,7 @@ const ProfilePage: React.FC = () => {
                     addExperience({
                       title: '',
                       company: '',
+                      employmentType: 'full_time',
                       location: '',
                       startDate: '',
                       endDate: '',
@@ -677,6 +712,23 @@ const ProfilePage: React.FC = () => {
                       disabled={!isEditing}
                       {...register(`education.${index}.degree`)}
                     />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Education Level
+                      </label>
+                      <select
+                        disabled={!isEditing}
+                        className="block w-full px-4 py-2.5 text-gray-900 bg-white border rounded-lg border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        {...register(`education.${index}.level` as const)}
+                      >
+                        <option value="high_school">High school</option>
+                        <option value="diploma">Diploma</option>
+                        <option value="bachelors">Bachelors</option>
+                        <option value="masters">Masters</option>
+                        <option value="phd">PhD</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
                     <Input
                       label="Field of Study"
                       disabled={!isEditing}
@@ -710,6 +762,7 @@ const ProfilePage: React.FC = () => {
                     addEducation({
                       institution: '',
                       degree: '',
+                      level: 'bachelors',
                       field: '',
                       startDate: '',
                       endDate: '',
@@ -783,6 +836,34 @@ const ProfilePage: React.FC = () => {
             </motion.div>
           )}
         </form>
+
+        {/* Sticky save bar for a more professional editing experience */}
+        {isEditing && (
+          <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t border-gray-200">
+            <div className="max-w-4xl mx-auto flex items-center justify-between py-3 px-4">
+              <div className="text-xs text-gray-600">
+                You have unsaved changes to your profile.
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                >
+                  Discard
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSubmit(onSubmit)}
+                  isLoading={updateProfile.isPending || updateBasicInfo.isPending || uploadAvatar.isPending}
+                  disabled={!firstName || !lastName}
+                >
+                  Save Profile
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

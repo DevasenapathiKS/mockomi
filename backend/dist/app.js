@@ -8,7 +8,6 @@ const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
 const morgan_1 = __importDefault(require("morgan"));
-const path_1 = __importDefault(require("path"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const config_1 = __importDefault(require("./config"));
@@ -18,7 +17,6 @@ const rateLimiter_1 = require("./middlewares/rateLimiter");
 const routes_1 = __importDefault(require("./routes"));
 const swagger_1 = __importDefault(require("./config/swagger"));
 const app = (0, express_1.default)();
-const distPath = path_1.default.resolve(process.cwd(), '../frontend', 'dist');
 // Trust proxy for rate limiting behind reverse proxy
 app.set('trust proxy', 1);
 // Security middleware
@@ -101,9 +99,15 @@ if (config_1.default.env !== 'production') {
 app.use('/api', rateLimiter_1.apiLimiter);
 // API routes
 app.use('/api/v1', routes_1.default);
-// Root endpoint
+// Root endpoint - simple health/info response
 app.get('/', (req, res) => {
-    return res.sendFile(path_1.default.join(distPath, 'index.html'));
+    return res.json({
+        status: 'ok',
+        name: 'Mockomi API',
+        env: config_1.default.env,
+        apiBase: '/api/v1',
+        docs: '/api-docs',
+    });
 });
 // 404 handler
 app.use(errorHandler_1.notFoundHandler);

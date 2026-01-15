@@ -46,8 +46,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         return [
           ...common.slice(0, 1),
           { name: 'My Profile', href: '/dashboard/profile', icon: UserIcon },
-          { name: 'Browse Jobs', href: '/jobs', icon: BriefcaseIcon },
-          { name: 'My Applications', href: '/dashboard/applications', icon: BriefcaseIcon },
+          // { name: 'Browse Jobs', href: '/jobs', icon: BriefcaseIcon },
+          // { name: 'My Applications', href: '/dashboard/applications', icon: BriefcaseIcon },
           { name: 'Mock Interviews', href: '/dashboard/interviews', icon: CalendarIcon },
           { name: 'Schedule Interview', href: '/dashboard/interviews/schedule', icon: CalendarIcon },
           ...common.slice(1),

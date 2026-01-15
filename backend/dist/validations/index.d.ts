@@ -352,7 +352,7 @@ export declare const jobSeekerProfileSchema: z.ZodObject<{
         endDate?: string | undefined;
         isCurrent?: boolean | undefined;
     }>, "many">>;
-    skills: z.ZodOptional<z.ZodArray<z.ZodObject<{
+    skills: z.ZodOptional<z.ZodArray<z.ZodUnion<[z.ZodObject<{
         name: z.ZodString;
         level: z.ZodEnum<["beginner", "intermediate", "advanced", "expert"]>;
         yearsOfExperience: z.ZodOptional<z.ZodNumber>;
@@ -364,7 +364,11 @@ export declare const jobSeekerProfileSchema: z.ZodObject<{
         level: "beginner" | "intermediate" | "advanced" | "expert";
         name: string;
         yearsOfExperience?: number | undefined;
-    }>, "many">>;
+    }>, z.ZodEffects<z.ZodString, {
+        name: string;
+        level: "intermediate";
+        yearsOfExperience: number;
+    }, string>]>, "many">>;
     projects: z.ZodOptional<z.ZodArray<z.ZodObject<{
         title: z.ZodString;
         description: z.ZodString;
@@ -509,11 +513,15 @@ export declare const jobSeekerProfileSchema: z.ZodObject<{
         skills?: string[] | undefined;
         endDate?: Date | undefined;
     }[] | undefined;
-    skills?: {
+    skills?: ({
         level: "beginner" | "intermediate" | "advanced" | "expert";
         name: string;
         yearsOfExperience?: number | undefined;
-    }[] | undefined;
+    } | {
+        name: string;
+        level: "intermediate";
+        yearsOfExperience: number;
+    })[] | undefined;
     projects?: {
         description: string;
         isCurrent: boolean;
@@ -584,11 +592,11 @@ export declare const jobSeekerProfileSchema: z.ZodObject<{
         endDate?: string | undefined;
         isCurrent?: boolean | undefined;
     }[] | undefined;
-    skills?: {
+    skills?: (string | {
         level: "beginner" | "intermediate" | "advanced" | "expert";
         name: string;
         yearsOfExperience?: number | undefined;
-    }[] | undefined;
+    })[] | undefined;
     projects?: {
         description: string;
         title: string;
