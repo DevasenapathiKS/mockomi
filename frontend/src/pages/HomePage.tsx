@@ -61,7 +61,7 @@ const HomePage: React.FC = () => {
             >
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-sm font-medium backdrop-blur-sm mb-6">
                 <SparklesIcon className="h-4 w-4" />
-                Your career success starts here
+                Don't let fear decide your career.
               </span>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
                 Land Your Dream Job with
