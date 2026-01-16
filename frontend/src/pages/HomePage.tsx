@@ -30,12 +30,12 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: '10,000+', label: 'Active Jobs' },
-  { value: '5,000+', label: 'Companies' },
-  { value: '50,000+', label: 'Job Seekers' },
-  { value: '95%', label: 'Success Rate' },
-];
+// const stats = [
+//   { value: '10,000+', label: 'Active Jobs' },
+//   { value: '5,000+', label: 'Companies' },
+//   { value: '50,000+', label: 'Job Seekers' },
+//   { value: '95%', label: 'Success Rate' },
+// ];
 
 const benefits = [
   '2 free mock interviews for every job seeker',
@@ -94,7 +94,7 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 bg-white border-b">
+      {/* <section className="py-12 bg-white border-b">
         <div className="container-custom">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -112,7 +112,7 @@ const HomePage: React.FC = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Features Section */}
       <section className="py-24 bg-gray-50">

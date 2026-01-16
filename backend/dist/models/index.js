@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Withdrawal = exports.Notification = exports.Payment = exports.Interview = exports.JobApplication = exports.Job = exports.InterviewerProfile = exports.CompanyProfile = exports.JobSeekerProfile = exports.User = void 0;
+exports.CouponUsage = exports.Coupon = exports.Withdrawal = exports.Notification = exports.Payment = exports.Interview = exports.JobApplication = exports.Job = exports.InterviewerProfile = exports.CompanyProfile = exports.JobSeekerProfile = exports.User = void 0;
 var User_1 = require("./User");
 Object.defineProperty(exports, "User", { enumerable: true, get: function () { return __importDefault(User_1).default; } });
 var JobSeekerProfile_1 = require("./JobSeekerProfile");
@@ -24,4 +24,8 @@ var Notification_1 = require("./Notification");
 Object.defineProperty(exports, "Notification", { enumerable: true, get: function () { return __importDefault(Notification_1).default; } });
 var Withdrawal_1 = require("./Withdrawal");
 Object.defineProperty(exports, "Withdrawal", { enumerable: true, get: function () { return __importDefault(Withdrawal_1).default; } });
+var Coupon_1 = require("./Coupon");
+Object.defineProperty(exports, "Coupon", { enumerable: true, get: function () { return __importDefault(Coupon_1).default; } });
+var CouponUsage_1 = require("./CouponUsage");
+Object.defineProperty(exports, "CouponUsage", { enumerable: true, get: function () { return __importDefault(CouponUsage_1).default; } });
 //# sourceMappingURL=index.js.map

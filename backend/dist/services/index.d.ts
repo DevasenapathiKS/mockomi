@@ -9,4 +9,5 @@ export { default as adminService } from './admin.service';
 export { default as s3Service } from './s3.service';
 export { default as withdrawalService } from './withdrawal.service';
 export { default as emailService } from './email.service';
+export { default as couponService } from './coupon.service';
 //# sourceMappingURL=index.d.ts.map

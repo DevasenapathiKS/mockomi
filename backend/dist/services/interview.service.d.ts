@@ -47,13 +47,13 @@ declare class InterviewService {
     getRecordingUrl(interviewId: string, userId: string): Promise<string>;
     checkPaymentRequired(jobSeekerId: string): Promise<{
         required: boolean;
-        freeInterviewsRemaining: number;
         pricePerInterview: number;
     }>;
     getAvailableInterviewers(expertise?: string[], date?: Date): Promise<any[]>;
     /**
      * Job seeker creates an interview request with required skills only.
      * No interviewer or time is selected at this stage.
+     * Supports coupon-based free interviews.
      */
     createInterviewRequest(data: {
         jobSeekerId: string;
@@ -61,6 +61,7 @@ declare class InterviewService {
         preferredDuration?: number;
         notes?: string;
         paymentId?: string;
+        couponCode?: string;
     }): Promise<IInterviewDocument>;
     /**
      * Get available interview requests for an interviewer based on their expertise.

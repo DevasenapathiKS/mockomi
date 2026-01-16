@@ -16,7 +16,6 @@ exports.scheduleInterview = (0, errorHandler_1.asyncHandler)(async (req, res) =>
             success: false,
             message: 'Payment required for this interview',
             data: {
-                freeInterviewsRemaining: paymentCheck.freeInterviewsRemaining,
                 pricePerInterview: paymentCheck.pricePerInterview,
             },
         });
@@ -159,24 +158,24 @@ exports.verifyPayment = (0, errorHandler_1.asyncHandler)(async (req, res) => {
  * Job seeker creates an interview request with selected skills only.
  */
 exports.createInterviewRequest = (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    // Check if payment is required
-    const paymentCheck = await services_1.interviewService.checkPaymentRequired(req.user.id);
-    if (paymentCheck.required && !req.body.paymentId) {
+    const { requestedSkills, preferredDuration, notes, paymentId, couponCode } = req.body;
+    // Validate that either payment or coupon is provided
+    if (!paymentId && !couponCode) {
         return res.status(402).json({
             success: false,
-            message: 'Payment required for this interview',
+            message: 'Payment or coupon code is required for this interview',
             data: {
-                freeInterviewsRemaining: paymentCheck.freeInterviewsRemaining,
-                pricePerInterview: paymentCheck.pricePerInterview,
+                pricePerInterview: (await services_1.interviewService.checkPaymentRequired(req.user.id)).pricePerInterview,
             },
         });
     }
     const interview = await services_1.interviewService.createInterviewRequest({
         jobSeekerId: req.user.id,
-        requestedSkills: req.body.requestedSkills,
-        preferredDuration: req.body.preferredDuration,
-        notes: req.body.notes,
-        paymentId: req.body.paymentId,
+        requestedSkills,
+        preferredDuration,
+        notes,
+        paymentId,
+        couponCode,
     });
     res.status(201).json({
         success: true,

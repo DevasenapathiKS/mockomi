@@ -16,6 +16,7 @@ export interface CreateInterviewRequestData {
   preferredDuration?: number;
   notes?: string;
   paymentId?: string;
+  couponCode?: string;
 }
 
 // New interface for claiming an interview (interviewer sets schedule)

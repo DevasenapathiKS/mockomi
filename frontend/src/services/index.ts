@@ -5,4 +5,5 @@ export { profileService } from './profileService';
 export { notificationService } from './notificationService';
 export { paymentService } from './paymentService';
 export { withdrawalService } from './withdrawalService';
+export { couponService } from './couponService';
 export { default as api } from './api';

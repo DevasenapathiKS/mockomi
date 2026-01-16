@@ -12,6 +12,7 @@ const mongoose_1 = require("mongoose");
 // import paymentService from './payment.service';
 const s3_service_1 = __importDefault(require("./s3.service"));
 const notification_service_1 = __importDefault(require("./notification.service"));
+const coupon_service_1 = __importDefault(require("./coupon.service"));
 class InterviewService {
     async validateCompletedPayment(paymentId, userId) {
         const payment = await models_1.Payment.findById(paymentId);
@@ -443,15 +444,10 @@ class InterviewService {
         return signedUrl;
     }
     async checkPaymentRequired(jobSeekerId) {
-        const profile = await models_1.JobSeekerProfile.findOne({ userId: jobSeekerId });
-        if (!profile) {
-            throw new errors_1.AppError('Profile not found', 404);
-        }
-        const freeInterviewsUsed = profile.interviewStats.freeInterviewsUsed;
-        const freeInterviewsRemaining = Math.max(0, config_1.default.interview.freeInterviews - freeInterviewsUsed);
+        // Payment is always required unless a valid coupon is used
+        // Coupon validation happens during interview creation
         return {
-            required: freeInterviewsRemaining === 0,
-            freeInterviewsRemaining,
+            required: true,
             pricePerInterview: config_1.default.interview.pricePaise / 100, // Convert to rupees
         };
     }
@@ -469,9 +465,10 @@ class InterviewService {
     /**
      * Job seeker creates an interview request with required skills only.
      * No interviewer or time is selected at this stage.
+     * Supports coupon-based free interviews.
      */
     async createInterviewRequest(data) {
-        const { jobSeekerId, requestedSkills, preferredDuration = 60, notes, paymentId } = data;
+        const { jobSeekerId, requestedSkills, preferredDuration = 60, notes, paymentId, couponCode } = data;
         if (!requestedSkills || requestedSkills.length === 0) {
             throw new errors_1.AppError('At least one skill must be selected', 400);
         }
@@ -480,14 +477,26 @@ class InterviewService {
         if (!jobSeekerProfile) {
             throw new errors_1.AppError('Job seeker profile not found', 404);
         }
-        // Check if payment is required
-        const freeInterviewsUsed = jobSeekerProfile.interviewStats.freeInterviewsUsed;
-        const needsPayment = freeInterviewsUsed >= config_1.default.interview.freeInterviews;
-        const payment = needsPayment && paymentId
-            ? await this.validateCompletedPayment(paymentId, jobSeekerId)
-            : null;
-        if (needsPayment && !paymentId) {
-            throw new errors_1.AppError('Payment required for this interview', 402);
+        let payment = null;
+        let couponApplied = false;
+        // Handle coupon if provided
+        if (couponCode) {
+            try {
+                // Apply coupon (this validates and increments usage atomically)
+                await coupon_service_1.default.applyCoupon(couponCode, jobSeekerId);
+                couponApplied = true;
+                logger_1.default.info(`Coupon ${couponCode} applied for interview request by user ${jobSeekerId}`);
+            }
+            catch (error) {
+                throw new errors_1.AppError(error.message || 'Invalid or expired coupon', 400);
+            }
+        }
+        // If no coupon, payment is required
+        if (!couponApplied) {
+            if (!paymentId) {
+                throw new errors_1.AppError('Payment required for this interview. Apply a coupon or complete payment.', 402);
+            }
+            payment = await this.validateCompletedPayment(paymentId, jobSeekerId);
         }
         // Set expiry date (e.g., 7 days from now)
         const expiresAt = new Date();
@@ -503,21 +512,17 @@ class InterviewService {
             notes,
             status: types_1.InterviewStatus.REQUESTED,
             type: 'mock',
-            isPaid: !!payment || !needsPayment,
+            isPaid: !!payment || couponApplied,
             payment: payment?._id,
             expiresAt,
         });
-        logger_1.default.info(`Interview request created: ${interview._id} with skills: ${requestedSkills.join(', ')}`);
-        // Update payment reference or free interview usage
+        logger_1.default.info(`Interview request created: ${interview._id} with skills: ${requestedSkills.join(', ')}${couponApplied ? ` (Coupon: ${couponCode})` : ''}`);
+        // Update payment reference if payment was made
         if (payment) {
             payment.interviewId = interview._id;
             await payment.save();
         }
-        else if (!needsPayment) {
-            jobSeekerProfile.interviewStats.freeInterviewsUsed += 1;
-            await jobSeekerProfile.save();
-        }
-        // Notify matching interviewers (optional - can be done via cron job too)
+        // Notify matching interviewers
         const matchingInterviewers = await models_1.InterviewerProfile.find({
             isApproved: true,
             expertise: { $in: requestedSkills },

@@ -8,3 +8,5 @@ export { default as Interview } from './Interview';
 export { default as Payment } from './Payment';
 export { default as Notification } from './Notification';
 export { default as Withdrawal } from './Withdrawal';
+export { default as Coupon } from './Coupon';
+export { default as CouponUsage } from './CouponUsage';

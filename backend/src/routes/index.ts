@@ -8,6 +8,7 @@ import paymentRoutes from './payment.routes';
 import notificationRoutes from './notification.routes';
 import adminRoutes from './admin.routes';
 import withdrawalRoutes from './withdrawal.routes';
+import couponRoutes from './coupon.routes';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/payments', paymentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
 router.use('/withdrawals', withdrawalRoutes);
+router.use('/coupons', couponRoutes);
 
 export default router;

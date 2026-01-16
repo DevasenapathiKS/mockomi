@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.withdrawalController = exports.adminController = exports.notificationController = exports.paymentController = exports.profileController = exports.interviewController = exports.applicationController = exports.jobController = exports.authController = void 0;
+exports.couponController = exports.withdrawalController = exports.adminController = exports.notificationController = exports.paymentController = exports.profileController = exports.interviewController = exports.applicationController = exports.jobController = exports.authController = void 0;
 exports.authController = __importStar(require("./auth.controller"));
 exports.jobController = __importStar(require("./job.controller"));
 exports.applicationController = __importStar(require("./application.controller"));
@@ -43,4 +43,5 @@ exports.paymentController = __importStar(require("./payment.controller"));
 exports.notificationController = __importStar(require("./notification.controller"));
 exports.adminController = __importStar(require("./admin.controller"));
 exports.withdrawalController = __importStar(require("./withdrawal.controller"));
+exports.couponController = __importStar(require("./coupon.controller"));
 //# sourceMappingURL=index.js.map

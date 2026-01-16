@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emailService = exports.withdrawalService = exports.s3Service = exports.adminService = exports.notificationService = exports.profileService = exports.paymentService = exports.interviewService = exports.applicationService = exports.jobService = exports.authService = void 0;
+exports.couponService = exports.emailService = exports.withdrawalService = exports.s3Service = exports.adminService = exports.notificationService = exports.profileService = exports.paymentService = exports.interviewService = exports.applicationService = exports.jobService = exports.authService = void 0;
 var auth_service_1 = require("./auth.service");
 Object.defineProperty(exports, "authService", { enumerable: true, get: function () { return __importDefault(auth_service_1).default; } });
 var job_service_1 = require("./job.service");
@@ -26,4 +26,6 @@ var withdrawal_service_1 = require("./withdrawal.service");
 Object.defineProperty(exports, "withdrawalService", { enumerable: true, get: function () { return __importDefault(withdrawal_service_1).default; } });
 var email_service_1 = require("./email.service");
 Object.defineProperty(exports, "emailService", { enumerable: true, get: function () { return __importDefault(email_service_1).default; } });
+var coupon_service_1 = require("./coupon.service");
+Object.defineProperty(exports, "couponService", { enumerable: true, get: function () { return __importDefault(coupon_service_1).default; } });
 //# sourceMappingURL=index.js.map

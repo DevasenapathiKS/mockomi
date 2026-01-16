@@ -7,3 +7,4 @@ export * as paymentController from './payment.controller';
 export * as notificationController from './notification.controller';
 export * as adminController from './admin.controller';
 export * as withdrawalController from './withdrawal.controller';
+export * as couponController from './coupon.controller';

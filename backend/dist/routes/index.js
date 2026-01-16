@@ -13,6 +13,7 @@ const payment_routes_1 = __importDefault(require("./payment.routes"));
 const notification_routes_1 = __importDefault(require("./notification.routes"));
 const admin_routes_1 = __importDefault(require("./admin.routes"));
 const withdrawal_routes_1 = __importDefault(require("./withdrawal.routes"));
+const coupon_routes_1 = __importDefault(require("./coupon.routes"));
 const router = (0, express_1.Router)();
 // Health check
 router.get('/health', (req, res) => {
@@ -32,5 +33,6 @@ router.use('/payments', payment_routes_1.default);
 router.use('/notifications', notification_routes_1.default);
 router.use('/admin', admin_routes_1.default);
 router.use('/withdrawals', withdrawal_routes_1.default);
+router.use('/coupons', coupon_routes_1.default);
 exports.default = router;
 //# sourceMappingURL=index.js.map

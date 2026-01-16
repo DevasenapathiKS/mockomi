@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Cropper from 'react-easy-crop';
 import {
   UserIcon,
@@ -12,7 +12,11 @@ import {
   TrashIcon,
   PencilIcon,
   CameraIcon,
+  CheckCircleIcon,
+  DocumentArrowUpIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
 import { useJobSeekerProfile, useUpdateJobSeekerProfile, useUploadResume, useUploadAvatar, useUpdateBasicInfo } from '@/hooks/useProfile';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import { useLocation } from 'react-router-dom';
@@ -321,8 +325,6 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  // Saving of basic info is handled together in onSubmit
-
   // Derive a reasonable completeness percentage if backend value is missing/zero
   const completionPercent = useMemo(() => {
     if (typeof profile?.profileCompleteness === 'number' && profile.profileCompleteness > 0) {
@@ -360,510 +362,685 @@ const ProfilePage: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600 mt-1">Create a strong profile to get better matches and interviews.</p>
-          </div>
-          {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)}>
-              <PencilIcon className="h-4 w-4 mr-2" />
-              Edit Profile
-            </Button>
-          ) : (
-            <div className="flex flex-col items-end gap-1 text-right">
-              <span className="text-xs font-semibold uppercase tracking-wide text-primary-600">Editing mode</span>
-              <span className="text-xs text-gray-500 max-w-xs">
-                Review your details below, then save your changes using the bar at the bottom.
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Profile Header Card */}
-        <Card className="mb-6">
-          {!isComplete && (
-            <div className="p-3 mb-2 rounded bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
-              Complete your profile to unlock all features. Missing: {missing.map((m) => m).join(', ')}
-            </div>
-          )}
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <img
-                src={avatarPreview || user?.avatar || '/default-avatar.png'}
-                alt={`${user?.firstName} ${user?.lastName}`}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-              {isEditing && (
-                <label className="absolute bottom-0 right-0 bg-primary-600 text-white p-1 rounded-full cursor-pointer hover:bg-primary-700 transition-colors">
-                  <CameraIcon className="h-4 w-4" />
-                  <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-                </label>
-              )}
-              {uploadAvatar.isPending && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
-                  <Spinner size="sm" />
-                </div>
-              )}
-            </div>
-            <div className="flex-1">
-              {isEditing ? (
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <Input
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="First Name"
-                    className="w-40"
-                  />
-                  <Input
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Last Name"
-                    className="w-40"
-                  />
-                </div>
-              ) : (
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {user?.firstName} {user?.lastName}
-                </h2>
-              )}
-                  <p className="text-gray-600">{profile?.headline || 'Add your headline'}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge variant="info">
-                      {completionPercent}% Complete
-                    </Badge>
+      <div className="max-w-5xl mx-auto pb-24">
+        {/* Hero Profile Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 mb-8">
+          <div className="absolute inset-0 bg-black/5"></div>
+          <div className="relative px-8 py-10">
+            {!isComplete && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20"
+              >
+                <div className="flex items-start gap-3">
+                  <CheckCircleSolidIcon className="h-5 w-5 text-yellow-300 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-white font-medium mb-1">Complete your profile</p>
+                    <p className="text-white/90 text-sm">
+                      Missing: {missing.join(', ')}. Complete your profile to unlock all features.
+                    </p>
                   </div>
-            </div>
-          </div>
-        </Card>
+                </div>
+              </motion.div>
+            )}
 
-        {showCropper && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <Card className="w-full max-w-lg overflow-hidden">
-              <div className="relative w-full h-80 bg-gray-900">
-                {imageSrc && (
-                  <Cropper
-                    image={imageSrc}
-                    crop={crop}
-                    zoom={zoom}
-                    aspect={1}
-                    onCropChange={setCrop}
-                    onZoomChange={setZoom}
-                    onCropComplete={onCropComplete}
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+              {/* Avatar Section */}
+              <div className="relative group">
+                <div className="relative w-32 h-32 rounded-2xl overflow-hidden border-4 border-white/20 shadow-xl bg-white/10 backdrop-blur-sm">
+                  <img
+                    src={avatarPreview || user?.avatar || '/default-avatar.png'}
+                    alt={`${user?.firstName} ${user?.lastName}`}
+                    className="w-full h-full object-cover"
                   />
+                  {uploadAvatar.isPending && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                      <Spinner size="md" className="text-white" />
+                    </div>
+                  )}
+                </div>
+                {isEditing && (
+                  <motion.label
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="absolute -bottom-2 -right-2 bg-white text-primary-600 p-3 rounded-full cursor-pointer shadow-lg hover:shadow-xl transition-shadow"
+                  >
+                    <CameraIcon className="h-5 w-5" />
+                    <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                  </motion.label>
                 )}
               </div>
-              <div className="p-4 flex items-center justify-between gap-3">
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-1/2"
-                />
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleCropCancel}>Cancel</Button>
-                  <Button onClick={handleCropConfirm}>Crop</Button>
+
+              {/* Name & Info Section */}
+              <div className="flex-1 text-white">
+                {isEditing ? (
+                  <div className="flex flex-wrap items-center gap-3 mb-3">
+                    <Input
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="First Name"
+                      className="w-48 bg-white/10 border-white/20 text-white placeholder:text-white/70 focus:bg-white/20"
+                    />
+                    <Input
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Last Name"
+                      className="w-48 bg-white/10 border-white/20 text-white placeholder:text-white/70 focus:bg-white/20"
+                    />
+                  </div>
+                ) : (
+                  <h1 className="text-3xl font-bold mb-2">
+                    {user?.firstName} {user?.lastName}
+                  </h1>
+                )}
+                
+                <p className="text-white/90 text-lg mb-4">
+                  {profile?.headline || <span className="text-white/60 italic">Add your professional headline</span>}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
+                    <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium">
+                      {completionPercent}% Complete
+                    </span>
+                  </div>
+                  {user?.email && (
+                    <span className="text-white/80 text-sm">{user.email}</span>
+                  )}
                 </div>
               </div>
-            </Card>
-          </div>
-        )}
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
+              {/* Action Button */}
+              {!isEditing && (
+                <Button
+                  onClick={() => setIsEditing(true)}
+                  variant="outline"
+                  className="bg-white text-primary-600 border-white hover:bg-white/90 shadow-lg"
+                >
+                  <PencilIcon className="h-5 w-5 mr-2" />
+                  Edit Profile
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs Navigation */}
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                flex items-center px-4 py-3 text-sm font-medium border-b-2 -mb-px
+                flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm whitespace-nowrap transition-all
                 ${activeTab === tab.id
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'bg-primary-600 text-white shadow-lg shadow-primary-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }
               `}
             >
-              <tab.icon className="h-5 w-5 mr-2" />
+              <tab.icon className="h-5 w-5" />
               {tab.label}
             </button>
           ))}
         </div>
 
         {/* Tab Content */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 pb-20">
-          {activeTab === 'basic' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-6"
-            >
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Basic Information
-                </h3>
-                <div className="space-y-4">
-                  <Input
-                    label="Professional Headline"
-                    placeholder="e.g., Senior Software Engineer with 5+ years experience"
-                    disabled={!isEditing}
-                    {...register('headline')}
-                    error={errors.headline?.message}
-                  />
-                  <Textarea
-                    label="Professional Summary"
-                    placeholder="Write a brief summary about yourself..."
-                    rows={4}
-                    disabled={!isEditing}
-                    {...register('summary')}
-                  />
-                  <Input
-                    label="Phone"
-                    placeholder="Phone number"
-                    disabled={!isEditing}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-              </Card>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <AnimatePresence mode="wait">
+            {activeTab === 'basic' && (
+              <motion.div
+                key="basic"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                <Card className="p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                    <UserIcon className="h-6 w-6 text-primary-600" />
+                    Basic Information
+                  </h3>
+                  <div className="space-y-5">
+                    <Input
+                      label="Professional Headline"
+                      placeholder="e.g., Senior Software Engineer with 5+ years experience"
+                      disabled={!isEditing}
+                      {...register('headline')}
+                      error={errors.headline?.message}
+                      className={!isEditing ? 'bg-gray-50' : ''}
+                    />
+                    <Textarea
+                      label="Professional Summary"
+                      placeholder="Write a brief summary about yourself, your experience, and what you're looking for..."
+                      rows={5}
+                      disabled={!isEditing}
+                      {...register('summary')}
+                      className={!isEditing ? 'bg-gray-50' : ''}
+                    />
+                    <Input
+                      label="Phone Number"
+                      placeholder="+91 9876543210"
+                      disabled={!isEditing}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className={!isEditing ? 'bg-gray-50' : ''}
+                    />
+                  </div>
+                </Card>
 
-              {/* Resume Section */}
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Resume</h3>
-                {profile?.resume ? (
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">{profile.resume.filename}</p>
-                      <p className="text-sm text-gray-500">
-                        Uploaded on {new Date(profile.resume.uploadedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
+                {/* Resume Section */}
+                <Card className="p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                    <DocumentArrowUpIcon className="h-6 w-6 text-primary-600" />
+                    Resume
+                  </h3>
+                  {profile?.resume ? (
+                    <div className="flex items-center justify-between p-5 bg-gradient-to-r from-primary-50 to-primary-100/50 rounded-xl border border-primary-200">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center">
+                          <DocumentArrowUpIcon className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{profile.resume.filename}</p>
+                          <p className="text-sm text-gray-600 mt-0.5">
+                            Uploaded on {new Date(profile.resume.uploadedAt).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                        </div>
+                      </div>
                       <a
                         href={profile.resume.url}
                         download={profile.resume.filename || 'resume'}
-                        className="text-primary-600 hover:text-primary-700"
+                        className="text-primary-600 hover:text-primary-700 font-medium flex items-center gap-2"
                       >
                         Download
                       </a>
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500">No resume uploaded yet</p>
-                )}
-                {isEditing && (
-                  <div className="mt-4">
-                    <label className="block">
-                      <span className="sr-only">Upload resume</span>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={handleResumeUpload}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-                      />
-                    </label>
-                  </div>
-                )}
-              </Card>
-            </motion.div>
-          )}
-
-          {activeTab === 'experience' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-4"
-            >
-              {experienceFields.map((field, index) => (
-                <Card key={field.id}>
-                  <div className="flex justify-between items-start mb-4">
-                    <h4 className="font-medium text-gray-900">Experience {index + 1}</h4>
-                    {isEditing && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeExperience(index)}
-                        className="text-red-600"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Job Title"
-                      disabled={!isEditing}
-                      {...register(`experience.${index}.title`)}
-                    />
-                    <Input
-                      label="Company"
-                      disabled={!isEditing}
-                      {...register(`experience.${index}.company`)}
-                    />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Employment Type
-                      </label>
-                      <select
-                        disabled={!isEditing}
-                        className="block w-full px-4 py-2.5 text-gray-900 bg-white border rounded-lg border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        {...register(`experience.${index}.employmentType` as const)}
-                      >
-                        <option value="full_time">Full-time</option>
-                        <option value="part_time">Part-time</option>
-                        <option value="contract">Contract</option>
-                        <option value="freelance">Freelance</option>
-                        <option value="internship">Internship</option>
-                      </select>
+                  ) : (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
+                      <DocumentArrowUpIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                      <p className="text-gray-600 mb-2">No resume uploaded yet</p>
+                      <p className="text-sm text-gray-500">Upload your resume to help employers find you</p>
                     </div>
-                    <Input
-                      label="Location"
-                      disabled={!isEditing}
-                      {...register(`experience.${index}.location`)}
-                    />
-                    <Input
-                      label="Start Date"
-                      type="month"
-                      disabled={!isEditing}
-                      {...register(`experience.${index}.startDate`)}
-                    />
-                    <Input
-                      label="End Date"
-                      type="month"
-                      disabled={!isEditing}
-                      {...register(`experience.${index}.endDate`)}
-                    />
-                  </div>
-                  <div className="mt-4">
-                    <Textarea
-                      label="Description"
-                      disabled={!isEditing}
-                      rows={3}
-                      {...register(`experience.${index}.description`)}
-                    />
-                  </div>
-                </Card>
-              ))}
-              {isEditing && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    addExperience({
-                      title: '',
-                      company: '',
-                      employmentType: 'full_time',
-                      location: '',
-                      startDate: '',
-                      endDate: '',
-                      current: false,
-                      description: '',
-                    })
-                  }
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Add Experience
-                </Button>
-              )}
-              {experienceFields.length === 0 && !isEditing && (
-                <Card className="text-center py-8">
-                  <BriefcaseIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-500">No experience added yet</p>
-                </Card>
-              )}
-            </motion.div>
-          )}
-
-          {activeTab === 'education' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-4"
-            >
-              {educationFields.map((field, index) => (
-                <Card key={field.id}>
-                  <div className="flex justify-between items-start mb-4">
-                    <h4 className="font-medium text-gray-900">Education {index + 1}</h4>
-                    {isEditing && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeEducation(index)}
-                        className="text-red-600"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Institution"
-                      disabled={!isEditing}
-                      {...register(`education.${index}.institution`)}
-                    />
-                    <Input
-                      label="Degree"
-                      disabled={!isEditing}
-                      {...register(`education.${index}.degree`)}
-                    />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Education Level
-                      </label>
-                      <select
-                        disabled={!isEditing}
-                        className="block w-full px-4 py-2.5 text-gray-900 bg-white border rounded-lg border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        {...register(`education.${index}.level` as const)}
-                      >
-                        <option value="high_school">High school</option>
-                        <option value="diploma">Diploma</option>
-                        <option value="bachelors">Bachelors</option>
-                        <option value="masters">Masters</option>
-                        <option value="phd">PhD</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <Input
-                      label="Field of Study"
-                      disabled={!isEditing}
-                      {...register(`education.${index}.field`)}
-                    />
-                    <Input
-                      label="Grade/CGPA"
-                      disabled={!isEditing}
-                      {...register(`education.${index}.grade`)}
-                    />
-                    <Input
-                      label="Start Date"
-                      type="month"
-                      disabled={!isEditing}
-                      {...register(`education.${index}.startDate`)}
-                    />
-                    <Input
-                      label="End Date"
-                      type="month"
-                      disabled={!isEditing}
-                      {...register(`education.${index}.endDate`)}
-                    />
-                  </div>
-                </Card>
-              ))}
-              {isEditing && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    addEducation({
-                      institution: '',
-                      degree: '',
-                      level: 'bachelors',
-                      field: '',
-                      startDate: '',
-                      endDate: '',
-                      current: false,
-                      grade: '',
-                    })
-                  }
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Add Education
-                </Button>
-              )}
-              {educationFields.length === 0 && !isEditing && (
-                <Card className="text-center py-8">
-                  <AcademicCapIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-500">No education added yet</p>
-                </Card>
-              )}
-            </motion.div>
-          )}
-
-          {activeTab === 'skills' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Skills</h3>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {skills.map((skill) => (
-                    <Badge
-                      key={skill}
-                      variant="info"
-                      className="flex items-center gap-1"
-                    >
-                      {skill}
-                      {isEditing && (
-                        <button
-                          type="button"
-                          onClick={() => removeSkill(skill)}
-                          className="ml-1 hover:text-red-600"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </Badge>
-                  ))}
-                  {skills.length === 0 && (
-                    <p className="text-gray-500">No skills added yet</p>
                   )}
-                </div>
-                {isEditing && (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add a skill"
-                      value={newSkill}
-                      onChange={(e) => setNewSkill(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addSkill();
-                        }
-                      }}
-                    />
-                    <Button type="button" onClick={addSkill}>
-                      <PlusIcon className="h-4 w-4" />
+                  {isEditing && (
+                    <div className="mt-4">
+                      <label className="block">
+                        <span className="sr-only">Upload resume</span>
+                        <div className="flex items-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-primary-400 hover:bg-primary-50/50 transition-colors cursor-pointer">
+                          <DocumentArrowUpIcon className="h-6 w-6 text-gray-400" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-700">
+                              {profile?.resume ? 'Replace Resume' : 'Upload Resume'}
+                            </p>
+                            <p className="text-xs text-gray-500">PDF, DOC, or DOCX (Max 10MB)</p>
+                          </div>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={handleResumeUpload}
+                            className="hidden"
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            )}
+
+            {activeTab === 'experience' && (
+              <motion.div
+                key="experience"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {experienceFields.length === 0 && !isEditing ? (
+                  <Card className="text-center py-16">
+                    <BriefcaseIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No experience added yet</h3>
+                    <p className="text-gray-600 mb-6">Add your work experience to showcase your career journey</p>
+                    <Button onClick={() => setIsEditing(true)}>
+                      <PlusIcon className="h-5 w-5 mr-2" />
+                      Add Experience
                     </Button>
-                  </div>
+                  </Card>
+                ) : (
+                  <>
+                    {experienceFields.map((field, index) => (
+                      <motion.div
+                        key={field.id}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                      >
+                        <Card className="p-6">
+                          <div className="flex justify-between items-start mb-6">
+                            <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                              <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center font-bold">
+                                {index + 1}
+                              </div>
+                              Experience {index + 1}
+                            </h4>
+                            {isEditing && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeExperience(index)}
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                              >
+                                <TrashIcon className="h-4 w-4 mr-1" />
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <Input
+                              label="Job Title"
+                              placeholder="e.g., Senior Software Engineer"
+                              disabled={!isEditing}
+                              {...register(`experience.${index}.title`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <Input
+                              label="Company"
+                              placeholder="e.g., Tech Company Inc."
+                              disabled={!isEditing}
+                              {...register(`experience.${index}.company`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Employment Type
+                              </label>
+                              <select
+                                disabled={!isEditing}
+                                className={`block w-full px-4 py-2.5 text-gray-900 bg-white border rounded-lg border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${!isEditing ? 'bg-gray-50' : ''}`}
+                                {...register(`experience.${index}.employmentType` as const)}
+                              >
+                                <option value="full_time">Full-time</option>
+                                <option value="part_time">Part-time</option>
+                                <option value="contract">Contract</option>
+                                <option value="freelance">Freelance</option>
+                                <option value="internship">Internship</option>
+                              </select>
+                            </div>
+                            <Input
+                              label="Location"
+                              placeholder="City, Country"
+                              disabled={!isEditing}
+                              {...register(`experience.${index}.location`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <Input
+                              label="Start Date"
+                              type="month"
+                              disabled={!isEditing}
+                              {...register(`experience.${index}.startDate`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <Input
+                              label="End Date"
+                              type="month"
+                              disabled={!isEditing || watch(`experience.${index}.current`)}
+                              {...register(`experience.${index}.endDate`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                          </div>
+                          <div className="mt-5">
+                            <Textarea
+                              label="Description"
+                              placeholder="Describe your responsibilities and achievements..."
+                              disabled={!isEditing}
+                              rows={4}
+                              {...register(`experience.${index}.description`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                          </div>
+                        </Card>
+                      </motion.div>
+                    ))}
+                    {isEditing && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          addExperience({
+                            title: '',
+                            company: '',
+                            employmentType: 'full_time',
+                            location: '',
+                            startDate: '',
+                            endDate: '',
+                            current: false,
+                            description: '',
+                          })
+                        }
+                        className="w-full border-2 border-dashed border-gray-300 hover:border-primary-400 hover:bg-primary-50"
+                      >
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Add Another Experience
+                      </Button>
+                    )}
+                  </>
                 )}
-              </Card>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
+
+            {activeTab === 'education' && (
+              <motion.div
+                key="education"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {educationFields.length === 0 && !isEditing ? (
+                  <Card className="text-center py-16">
+                    <AcademicCapIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No education added yet</h3>
+                    <p className="text-gray-600 mb-6">Add your educational background to complete your profile</p>
+                    <Button onClick={() => setIsEditing(true)}>
+                      <PlusIcon className="h-5 w-5 mr-2" />
+                      Add Education
+                    </Button>
+                  </Card>
+                ) : (
+                  <>
+                    {educationFields.map((field, index) => (
+                      <motion.div
+                        key={field.id}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                      >
+                        <Card className="p-6">
+                          <div className="flex justify-between items-start mb-6">
+                            <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                              <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center font-bold">
+                                {index + 1}
+                              </div>
+                              Education {index + 1}
+                            </h4>
+                            {isEditing && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeEducation(index)}
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                              >
+                                <TrashIcon className="h-4 w-4 mr-1" />
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <Input
+                              label="Institution"
+                              placeholder="e.g., University of Technology"
+                              disabled={!isEditing}
+                              {...register(`education.${index}.institution`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <Input
+                              label="Degree"
+                              placeholder="e.g., Bachelor of Science"
+                              disabled={!isEditing}
+                              {...register(`education.${index}.degree`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Education Level
+                              </label>
+                              <select
+                                disabled={!isEditing}
+                                className={`block w-full px-4 py-2.5 text-gray-900 bg-white border rounded-lg border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${!isEditing ? 'bg-gray-50' : ''}`}
+                                {...register(`education.${index}.level` as const)}
+                              >
+                                <option value="high_school">High school</option>
+                                <option value="diploma">Diploma</option>
+                                <option value="bachelors">Bachelors</option>
+                                <option value="masters">Masters</option>
+                                <option value="phd">PhD</option>
+                                <option value="other">Other</option>
+                              </select>
+                            </div>
+                            <Input
+                              label="Field of Study"
+                              placeholder="e.g., Computer Science"
+                              disabled={!isEditing}
+                              {...register(`education.${index}.field`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <Input
+                              label="Grade/CGPA"
+                              placeholder="e.g., 3.8 / 4.0"
+                              disabled={!isEditing}
+                              {...register(`education.${index}.grade`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <Input
+                              label="Start Date"
+                              type="month"
+                              disabled={!isEditing}
+                              {...register(`education.${index}.startDate`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                            <Input
+                              label="End Date"
+                              type="month"
+                              disabled={!isEditing || watch(`education.${index}.current`)}
+                              {...register(`education.${index}.endDate`)}
+                              className={!isEditing ? 'bg-gray-50' : ''}
+                            />
+                          </div>
+                        </Card>
+                      </motion.div>
+                    ))}
+                    {isEditing && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          addEducation({
+                            institution: '',
+                            degree: '',
+                            level: 'bachelors',
+                            field: '',
+                            startDate: '',
+                            endDate: '',
+                            current: false,
+                            grade: '',
+                          })
+                        }
+                        className="w-full border-2 border-dashed border-gray-300 hover:border-primary-400 hover:bg-primary-50"
+                      >
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Add Another Education
+                      </Button>
+                    )}
+                  </>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === 'skills' && (
+              <motion.div
+                key="skills"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <Card className="p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                    <WrenchScrewdriverIcon className="h-6 w-6 text-primary-600" />
+                    Skills & Expertise
+                  </h3>
+                  {skills.length === 0 && !isEditing ? (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
+                      <WrenchScrewdriverIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                      <p className="text-gray-600 mb-2">No skills added yet</p>
+                      <p className="text-sm text-gray-500">Add your skills to help employers find you</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap gap-3">
+                        {skills.map((skill) => (
+                          <Badge
+                            key={skill}
+                            variant="info"
+                            className="flex items-center gap-2 px-4 py-2 text-base"
+                          >
+                            {skill}
+                            {isEditing && (
+                              <button
+                                type="button"
+                                onClick={() => removeSkill(skill)}
+                                className="ml-1 hover:text-red-600 transition-colors"
+                              >
+                                <XMarkIcon className="h-4 w-4" />
+                              </button>
+                            )}
+                          </Badge>
+                        ))}
+                      </div>
+                      {isEditing && (
+                        <div className="flex gap-3 pt-4 border-t">
+                          <Input
+                            placeholder="Add a skill (e.g., JavaScript, Python, React)"
+                            value={newSkill}
+                            onChange={(e) => setNewSkill(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addSkill();
+                              }
+                            }}
+                            className="flex-1"
+                          />
+                          <Button type="button" onClick={addSkill}>
+                            <PlusIcon className="h-5 w-5 mr-2" />
+                            Add
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </form>
 
-        {/* Sticky save bar for a more professional editing experience */}
-        {isEditing && (
-          <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t border-gray-200">
-            <div className="max-w-4xl mx-auto flex items-center justify-between py-3 px-4">
-              <div className="text-xs text-gray-600">
-                You have unsaved changes to your profile.
+        {/* Image Cropper Modal */}
+        <AnimatePresence>
+          {showCropper && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="w-full max-w-2xl mx-4"
+              >
+                <Card className="overflow-hidden">
+                  <div className="relative w-full h-96 bg-gray-900">
+                    {imageSrc && (
+                      <Cropper
+                        image={imageSrc}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={1}
+                        onCropChange={setCrop}
+                        onZoomChange={setZoom}
+                        onCropComplete={onCropComplete}
+                      />
+                    )}
+                  </div>
+                  <div className="p-6 bg-white">
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Zoom: {zoom.toFixed(1)}x
+                      </label>
+                      <input
+                        type="range"
+                        min={1}
+                        max={3}
+                        step={0.1}
+                        value={zoom}
+                        onChange={(e) => setZoom(Number(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <Button variant="outline" onClick={handleCropCancel} className="flex-1">
+                        Cancel
+                      </Button>
+                      <Button onClick={handleCropConfirm} className="flex-1">
+                        <CheckCircleIcon className="h-5 w-5 mr-2" />
+                        Apply Crop
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating Save Button */}
+        <AnimatePresence>
+          {isEditing && (
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              className="fixed bottom-8 right-8 z-40"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 flex items-center gap-3">
+                <div className="text-right pr-4 border-r border-gray-200">
+                  <p className="text-xs text-gray-500">You have unsaved changes</p>
+                  <p className="text-sm font-medium text-gray-900">Review and save your profile</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                    className="border-gray-300"
+                  >
+                    <XMarkIcon className="h-4 w-4 mr-1" />
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit(onSubmit)}
+                    isLoading={updateProfile.isPending || updateBasicInfo.isPending || uploadAvatar.isPending}
+                    disabled={!firstName || !lastName}
+                  >
+                    <CheckCircleIcon className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancelEdit}
-                >
-                  Discard
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleSubmit(onSubmit)}
-                  isLoading={updateProfile.isPending || updateBasicInfo.isPending || uploadAvatar.isPending}
-                  disabled={!firstName || !lastName}
-                >
-                  Save Profile
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </DashboardLayout>
   );
