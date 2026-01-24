@@ -36,11 +36,6 @@ const EarningsPage = React.lazy(() => import('@/pages/dashboard/EarningsPage'));
 const InterviewRequestsPage = React.lazy(() => import('@/pages/dashboard/InterviewRequestsPage'));
 const InterviewPanelPage = React.lazy(() => import('@/pages/dashboard/InterviewPanelPage'));
 
-// Admin Pages
-const AdminDashboardPage = React.lazy(() => import('@/pages/admin/AdminDashboardPage'));
-const AdminUsersPage = React.lazy(() => import('@/pages/admin/AdminUsersPage'));
-const AdminJobsPage = React.lazy(() => import('@/pages/admin/AdminJobsPage'));
-const AdminPaymentsPage = React.lazy(() => import('@/pages/admin/AdminPaymentsPage'));
 
 // Protected Route component
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -98,10 +93,10 @@ const App: React.FC = () => {
 
         {/* Protected routes - Job Seekers and Interviewers */}
         <Route element={<ProtectedRoute allowedRoles={[UserRole.JOB_SEEKER, UserRole.INTERVIEWER]} />}> 
-          <Route element={<ProfileCompletionGate />}> 
+          {/* <Route element={<ProfileCompletionGate />}>  */}
             <Route path="/dashboard/interviews" element={<InterviewsPage />} />
             <Route path="/dashboard/interviews/:id/panel" element={<InterviewPanelPage />} />
-          </Route>
+          {/* </Route> */}
         </Route>
 
         {/* Protected routes - Employers only */}
@@ -120,15 +115,6 @@ const App: React.FC = () => {
           <Route path="/dashboard/earnings" element={<EarningsPage />} />
           <Route path="/dashboard/interview-requests" element={<InterviewRequestsPage />} />
         </Route>
-
-        {/* Protected routes - Admin only */}
-        <Route element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]} />}>
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/jobs" element={<AdminJobsPage />} />
-          <Route path="/admin/payments" element={<AdminPaymentsPage />} />
-        </Route>
-
         {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

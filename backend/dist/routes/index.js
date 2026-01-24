@@ -14,15 +14,10 @@ const notification_routes_1 = __importDefault(require("./notification.routes"));
 const admin_routes_1 = __importDefault(require("./admin.routes"));
 const withdrawal_routes_1 = __importDefault(require("./withdrawal.routes"));
 const coupon_routes_1 = __importDefault(require("./coupon.routes"));
+const health_routes_1 = __importDefault(require("./health.routes"));
 const router = (0, express_1.Router)();
-// Health check
-router.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-    });
-});
+// Health check routes (before other routes for quick access)
+router.use('/health', health_routes_1.default);
 // API routes
 router.use('/auth', auth_routes_1.default);
 router.use('/jobs', job_routes_1.default);

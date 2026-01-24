@@ -150,6 +150,8 @@ export interface IBaseUser {
   isEmailVerified: boolean;
   lastLogin?: Date;
   refreshTokens: string[];
+  failedLoginAttempts?: number;
+  accountLockedUntil?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -446,6 +448,7 @@ export interface IPayment {
   razorpaySignature?: string;
   receipt: string;
   notes?: object;
+  idempotencyKey?: string;
   createdAt: Date;
   updatedAt: Date;
 }

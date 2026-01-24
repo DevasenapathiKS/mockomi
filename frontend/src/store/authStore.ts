@@ -5,11 +5,12 @@ import { User, AuthTokens } from '@/types';
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
+  refreshToken: string | null; // Deprecated: refreshToken is now in httpOnly cookie
   isAuthenticated: boolean;
   isLoading: boolean;
   setUser: (user: User) => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setTokens: (accessToken: string, refreshToken: string) => void; // Kept for backward compatibility
+  setAccessToken: (accessToken: string) => void; // New method for token refresh
   setAuth: (user: User, tokens: AuthTokens) => void;
   updateUser: (updates: Partial<User>) => void;
   logout: () => void;
@@ -34,7 +35,12 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (accessToken, refreshToken) =>
         set({
           accessToken,
-          refreshToken,
+          refreshToken, // Deprecated but kept for backward compatibility
+        }),
+
+      setAccessToken: (accessToken) =>
+        set({
+          accessToken,
         }),
 
       setAuth: (user, tokens) =>

@@ -425,7 +425,6 @@ export interface Payment {
 
 export interface PaymentEligibility {
   required: boolean;
-  freeInterviewsRemaining: number;
   pricePerInterview: number;
 }
 
@@ -471,7 +470,9 @@ export interface PaginatedResponse<T> {
     page: number;
     limit: number;
     total: number;
-    pages: number;
+    totalPages: number;
+    hasNext?: boolean;
+    hasPrev?: boolean;
   };
 }
 

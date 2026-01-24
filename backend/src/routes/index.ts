@@ -9,17 +9,12 @@ import notificationRoutes from './notification.routes';
 import adminRoutes from './admin.routes';
 import withdrawalRoutes from './withdrawal.routes';
 import couponRoutes from './coupon.routes';
+import healthRoutes from './health.routes';
 
 const router = Router();
 
-// Health check
-router.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
-});
+// Health check routes (before other routes for quick access)
+router.use('/health', healthRoutes);
 
 // API routes
 router.use('/auth', authRoutes);

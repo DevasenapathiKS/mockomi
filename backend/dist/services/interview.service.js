@@ -9,6 +9,7 @@ const errors_1 = require("../utils/errors");
 const config_1 = __importDefault(require("../config"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const mongoose_1 = require("mongoose");
+const mongoose_2 = __importDefault(require("mongoose"));
 // import paymentService from './payment.service';
 const s3_service_1 = __importDefault(require("./s3.service"));
 const notification_service_1 = __importDefault(require("./notification.service"));
@@ -313,7 +314,28 @@ class InterviewService {
         }
         interview.status = types_1.InterviewStatus.COMPLETED;
         await interview.save();
-        // Update interviewer stats
+        // Get current interviewer profile to check completed interviews count
+        const interviewerProfile = await models_1.InterviewerProfile.findOne({ userId: interviewerId });
+        if (!interviewerProfile) {
+            throw new errors_1.AppError('Interviewer profile not found', 404);
+        }
+        const currentCompletedCount = interviewerProfile.interviewsCompleted || 0;
+        const isFirstInterview = currentCompletedCount === 0;
+        // Update interviewer earnings only from second interview onwards
+        // First interview is free (no earnings)
+        if (!isFirstInterview && interview.payment) {
+            const payment = await models_1.Payment.findById(interview.payment);
+            if (payment && payment.status === types_1.PaymentStatus.COMPLETED) {
+                // Payment amount is in paise, convert to rupees for earnings
+                const earningsAmount = payment.amount / 100;
+                await models_1.InterviewerProfile.findOneAndUpdate({ userId: interviewerId }, { $inc: { earnings: earningsAmount } });
+                logger_1.default.info(`Earnings updated for interviewer ${interviewerId}: +₹${earningsAmount} (from interview ${interviewId})`);
+            }
+        }
+        else if (isFirstInterview) {
+            logger_1.default.info(`First interview completed for interviewer ${interviewerId} - no earnings (free interview)`);
+        }
+        // Always increment completed interviews count (for tracking)
         await models_1.InterviewerProfile.findOneAndUpdate({ userId: interviewerId }, { $inc: { interviewsCompleted: 1 } });
         // Update job seeker stats
         await models_1.JobSeekerProfile.findOneAndUpdate({ userId: interview.jobSeekerId }, { $inc: { 'interviewStats.totalInterviews': 1 } });
@@ -466,77 +488,116 @@ class InterviewService {
      * Job seeker creates an interview request with required skills only.
      * No interviewer or time is selected at this stage.
      * Supports coupon-based free interviews.
+     * Uses MongoDB transactions to ensure atomicity.
      */
     async createInterviewRequest(data) {
         const { jobSeekerId, requestedSkills, preferredDuration = 60, notes, paymentId, couponCode } = data;
         if (!requestedSkills || requestedSkills.length === 0) {
             throw new errors_1.AppError('At least one skill must be selected', 400);
         }
-        // Check job seeker profile exists
-        const jobSeekerProfile = await models_1.JobSeekerProfile.findOne({ userId: jobSeekerId });
-        if (!jobSeekerProfile) {
-            throw new errors_1.AppError('Job seeker profile not found', 404);
-        }
-        let payment = null;
-        let couponApplied = false;
-        // Handle coupon if provided
-        if (couponCode) {
-            try {
-                // Apply coupon (this validates and increments usage atomically)
-                await coupon_service_1.default.applyCoupon(couponCode, jobSeekerId);
-                couponApplied = true;
-                logger_1.default.info(`Coupon ${couponCode} applied for interview request by user ${jobSeekerId}`);
+        // Start MongoDB transaction
+        const session = await mongoose_2.default.startSession();
+        session.startTransaction();
+        try {
+            // Check job seeker profile exists
+            const jobSeekerProfile = await models_1.JobSeekerProfile.findOne({ userId: jobSeekerId }).session(session);
+            if (!jobSeekerProfile) {
+                throw new errors_1.AppError('Job seeker profile not found', 404);
             }
-            catch (error) {
-                throw new errors_1.AppError(error.message || 'Invalid or expired coupon', 400);
+            let payment = null;
+            let couponApplied = false;
+            // Handle coupon if provided
+            if (couponCode) {
+                try {
+                    // Validate coupon first (don't apply yet if payment is also provided)
+                    const validation = await coupon_service_1.default.validateCoupon(couponCode, jobSeekerId);
+                    if (!validation.valid) {
+                        throw new errors_1.AppError(validation.message || 'Invalid or expired coupon', 400);
+                    }
+                    // If payment is also provided, it means user paid discounted amount
+                    // If no payment, coupon makes it free (100% discount or flat discount covering full amount)
+                    if (!paymentId) {
+                        // Apply coupon within transaction (this validates and increments usage atomically)
+                        await coupon_service_1.default.applyCoupon(couponCode, jobSeekerId, { session });
+                        couponApplied = true;
+                        logger_1.default.info(`Coupon ${couponCode} applied for free interview request by user ${jobSeekerId}`);
+                    }
+                    else {
+                        // Payment + coupon: validate coupon but don't apply yet
+                        // We'll apply it after payment validation
+                        couponApplied = true;
+                        logger_1.default.info(`Coupon ${couponCode} validated for discounted payment by user ${jobSeekerId}`);
+                    }
+                }
+                catch (error) {
+                    throw new errors_1.AppError(error.message || 'Invalid or expired coupon', 400);
+                }
             }
-        }
-        // If no coupon, payment is required
-        if (!couponApplied) {
-            if (!paymentId) {
-                throw new errors_1.AppError('Payment required for this interview. Apply a coupon or complete payment.', 402);
+            // If no coupon, payment is required
+            if (!couponApplied) {
+                if (!paymentId) {
+                    throw new errors_1.AppError('Payment required for this interview. Apply a coupon or complete payment.', 402);
+                }
+                payment = await this.validateCompletedPayment(paymentId, jobSeekerId);
             }
-            payment = await this.validateCompletedPayment(paymentId, jobSeekerId);
-        }
-        // Set expiry date (e.g., 7 days from now)
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
-        // Create interview request
-        const interview = await models_1.Interview.create({
-            jobSeekerId,
-            interviewerId: null,
-            scheduledAt: null,
-            duration: preferredDuration,
-            requestedSkills,
-            preferredDuration,
-            notes,
-            status: types_1.InterviewStatus.REQUESTED,
-            type: 'mock',
-            isPaid: !!payment || couponApplied,
-            payment: payment?._id,
-            expiresAt,
-        });
-        logger_1.default.info(`Interview request created: ${interview._id} with skills: ${requestedSkills.join(', ')}${couponApplied ? ` (Coupon: ${couponCode})` : ''}`);
-        // Update payment reference if payment was made
-        if (payment) {
-            payment.interviewId = interview._id;
-            await payment.save();
-        }
-        // Notify matching interviewers
-        const matchingInterviewers = await models_1.InterviewerProfile.find({
-            isApproved: true,
-            expertise: { $in: requestedSkills },
-        });
-        for (const interviewer of matchingInterviewers) {
-            await notification_service_1.default.createNotification({
-                userId: interviewer.userId.toString(),
-                type: 'new_interview_request',
-                title: 'New Interview Request Available',
-                message: `A new interview request matching your expertise (${requestedSkills.join(', ')}) is available.`,
-                data: { interviewId: interview._id },
+            else if (paymentId) {
+                // Coupon + payment: validate payment and apply coupon
+                payment = await this.validateCompletedPayment(paymentId, jobSeekerId);
+                // Apply coupon after payment validation (within transaction)
+                await coupon_service_1.default.applyCoupon(couponCode, jobSeekerId, { session });
+                logger_1.default.info(`Coupon ${couponCode} applied after payment validation for user ${jobSeekerId}`);
+            }
+            // Set expiry date (e.g., 7 days from now)
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 7);
+            // Create interview request within transaction
+            const [interview] = await models_1.Interview.create([{
+                    jobSeekerId,
+                    interviewerId: null,
+                    scheduledAt: null,
+                    duration: preferredDuration,
+                    requestedSkills,
+                    preferredDuration,
+                    notes,
+                    status: types_1.InterviewStatus.REQUESTED,
+                    type: 'mock',
+                    isPaid: !!payment || couponApplied,
+                    payment: payment?._id,
+                    expiresAt,
+                }], { session });
+            logger_1.default.info(`Interview request created: ${interview._id} with skills: ${requestedSkills.join(', ')}${couponApplied ? ` (Coupon: ${couponCode})` : ''}`);
+            // Update payment reference if payment was made (within transaction)
+            if (payment) {
+                payment.interviewId = interview._id;
+                await payment.save({ session });
+            }
+            // Commit transaction
+            await session.commitTransaction();
+            // Notify matching interviewers (outside transaction - these are fire-and-forget)
+            const matchingInterviewers = await models_1.InterviewerProfile.find({
+                isApproved: true,
+                expertise: { $in: requestedSkills },
             });
+            for (const interviewer of matchingInterviewers) {
+                await notification_service_1.default.createNotification({
+                    userId: interviewer.userId.toString(),
+                    type: 'new_interview_request',
+                    title: 'New Interview Request Available',
+                    message: `A new interview request matching your expertise (${requestedSkills.join(', ')}) is available.`,
+                    data: { interviewId: interview._id },
+                });
+            }
+            return interview;
         }
-        return interview;
+        catch (error) {
+            // Rollback transaction on error
+            await session.abortTransaction();
+            throw error;
+        }
+        finally {
+            // End session
+            session.endSession();
+        }
     }
     /**
      * Get available interview requests for an interviewer based on their expertise.

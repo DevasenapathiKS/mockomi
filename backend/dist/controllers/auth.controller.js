@@ -13,24 +13,59 @@ exports.register = (0, errorHandler_1.asyncHandler)(async (req, res) => {
 });
 exports.login = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const result = await services_1.authService.login(req.body);
+    // Set refresh token in httpOnly cookie for security
+    res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/api/v1/auth',
+    });
     res.status(200).json({
         success: true,
         message: 'Login successful',
-        data: result,
+        data: {
+            user: result.user,
+            accessToken: result.accessToken,
+            // Don't send refreshToken in response body (it's in cookie)
+        },
     });
 });
 exports.refreshToken = (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const { refreshToken } = req.body;
+    // Get refresh token from cookie (preferred) or body (fallback for migration)
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    if (!refreshToken) {
+        return res.status(401).json({
+            success: false,
+            message: 'Refresh token not provided',
+        });
+    }
     const result = await services_1.authService.refreshToken(req.user.id, refreshToken);
+    // Set new refresh token in httpOnly cookie
+    res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/api/v1/auth',
+    });
     res.status(200).json({
         success: true,
         message: 'Token refreshed successfully',
-        data: result,
+        data: {
+            accessToken: result.accessToken,
+            // Don't send refreshToken in response body
+        },
     });
 });
 exports.logout = (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const { refreshToken } = req.body;
+    // Get refresh token from cookie or body
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
     await services_1.authService.logout(req.user.id, refreshToken);
+    // Clear refresh token cookie
+    res.clearCookie('refreshToken', {
+        path: '/api/v1/auth',
+    });
     res.status(200).json({
         success: true,
         message: 'Logout successful',

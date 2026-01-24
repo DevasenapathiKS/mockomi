@@ -214,7 +214,7 @@ const ApplicationsPage: React.FC = () => {
         )}
 
         {/* Pagination */}
-        {pagination && pagination.pages > 1 && (
+        {pagination && pagination.totalPages > 1 && (
           <div className="flex justify-center gap-2 mt-8">
             <Button
               variant="outline"
@@ -224,12 +224,12 @@ const ApplicationsPage: React.FC = () => {
               Previous
             </Button>
             <span className="flex items-center px-4 text-sm text-gray-600">
-              Page {pagination.page} of {pagination.pages}
+              Page {pagination.page} of {pagination.totalPages}
             </span>
             <Button
               variant="outline"
               onClick={() => setPage(page + 1)}
-              disabled={page >= pagination.pages}
+              disabled={page >= pagination.totalPages}
             >
               Next
             </Button>

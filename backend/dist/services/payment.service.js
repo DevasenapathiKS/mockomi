@@ -11,6 +11,7 @@ const errors_1 = require("../utils/errors");
 const config_1 = __importDefault(require("../config"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const notification_service_1 = __importDefault(require("./notification.service"));
+const coupon_service_1 = __importDefault(require("./coupon.service"));
 const razorpay = new razorpay_1.default({
     key_id: config_1.default.razorpay.keyId,
     key_secret: config_1.default.razorpay.keySecret,
@@ -18,12 +19,48 @@ const razorpay = new razorpay_1.default({
 class PaymentService {
     async createOrder(data) {
         const { userId, interviewId, amount, notes } = data;
+        // Calculate discounted amount if coupon is provided
+        // Always use base price for interview requests and calculate discount server-side
+        const basePricePaise = config_1.default.interview.pricePaise; // Base price in paise (₹100 = 10000 paise)
+        let finalAmount = basePricePaise; // Default to base price
+        // Type guard for notes object
+        const notesObj = notes;
+        // Check if this is an interview request
+        const isInterviewRequest = notesObj && notesObj.reason === 'mock_interview_request';
+        if (isInterviewRequest && notesObj && notesObj.couponCode) {
+            const couponCode = notesObj.couponCode;
+            // Validate coupon server-side (security: never trust frontend)
+            const validation = await coupon_service_1.default.validateCoupon(couponCode, userId);
+            if (!validation.valid) {
+                throw new errors_1.AppError(validation.message || 'Invalid or expired coupon', 400);
+            }
+            // Get coupon details
+            const coupon = validation.coupon;
+            if (coupon) {
+                // Calculate discount based on coupon type (always from base price)
+                if (coupon.discountType === 'percentage') {
+                    // Percentage discount: reduce by percentage
+                    finalAmount = Math.round(basePricePaise * (1 - coupon.discountValue / 100));
+                }
+                else {
+                    // Flat discount: subtract flat amount (coupon.discountValue is in rupees)
+                    finalAmount = Math.round(basePricePaise - (coupon.discountValue * 100));
+                }
+                // Ensure minimum amount is ₹1 (10000 paise) for Razorpay
+                finalAmount = Math.max(10000, finalAmount);
+                logger_1.default.info(`Coupon ${couponCode} applied for user ${userId}. Original: ₹${basePricePaise / 100}, Discounted: ₹${finalAmount / 100}`);
+            }
+        }
+        else if (!isInterviewRequest) {
+            // For non-interview payments, use the provided amount
+            finalAmount = amount;
+        }
         // Create Razorpay order
         const receipt = `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         let razorpayOrder;
         try {
             razorpayOrder = await razorpay.orders.create({
-                amount: amount, // amount in paise
+                amount: finalAmount, // Use calculated discounted amount
                 currency: 'INR',
                 receipt,
                 notes: {
@@ -40,12 +77,12 @@ class PaymentService {
             logger_1.default.error(`Razorpay order creation failed: ${message}`);
             throw new errors_1.AppError(message, 400);
         }
-        // Create payment record
+        // Create payment record with the final calculated amount
         const payment = await models_1.Payment.create({
             userId,
             interviewId,
             orderId: receipt,
-            amount,
+            amount: finalAmount, // Store the calculated amount (which includes discount if any)
             currency: 'INR',
             status: types_1.PaymentStatus.PENDING,
             razorpayOrderId: razorpayOrder.id,
@@ -69,6 +106,18 @@ class PaymentService {
         if (expectedSignature !== razorpay_signature) {
             throw new errors_1.AppError('Invalid payment signature', 400);
         }
+        // Check idempotency - prevent duplicate processing
+        const idempotencyKey = `${razorpay_order_id}-${razorpay_payment_id}`;
+        const existingPayment = await models_1.Payment.findOne({
+            $or: [
+                { razorpayPaymentId: razorpay_payment_id },
+                { idempotencyKey }
+            ]
+        });
+        if (existingPayment && existingPayment.status === types_1.PaymentStatus.COMPLETED) {
+            logger_1.default.warn(`Duplicate payment webhook ignored: ${razorpay_payment_id}`);
+            return existingPayment; // Return existing, don't process again
+        }
         // Find and update payment
         const payment = await models_1.Payment.findOne({ razorpayOrderId: razorpay_order_id });
         if (!payment) {
@@ -76,6 +125,7 @@ class PaymentService {
         }
         payment.razorpayPaymentId = razorpay_payment_id;
         payment.razorpaySignature = razorpay_signature;
+        payment.idempotencyKey = idempotencyKey;
         payment.status = types_1.PaymentStatus.COMPLETED;
         await payment.save();
         // If payment is for an interview, update interview status
@@ -124,11 +174,24 @@ class PaymentService {
         }
     }
     async handlePaymentCaptured(paymentEntity) {
+        // Check idempotency
+        const idempotencyKey = `${paymentEntity.order_id}-${paymentEntity.id}`;
+        const existingPayment = await models_1.Payment.findOne({
+            $or: [
+                { razorpayPaymentId: paymentEntity.id },
+                { idempotencyKey }
+            ]
+        });
+        if (existingPayment && existingPayment.status === types_1.PaymentStatus.COMPLETED) {
+            logger_1.default.warn(`Duplicate payment webhook ignored: ${paymentEntity.id}`);
+            return; // Already processed
+        }
         const payment = await models_1.Payment.findOne({
             razorpayOrderId: paymentEntity.order_id,
         });
         if (payment && payment.status !== types_1.PaymentStatus.COMPLETED) {
             payment.razorpayPaymentId = paymentEntity.id;
+            payment.idempotencyKey = idempotencyKey;
             payment.status = types_1.PaymentStatus.COMPLETED;
             await payment.save();
             if (payment.interviewId) {

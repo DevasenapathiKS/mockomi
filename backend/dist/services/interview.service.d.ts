@@ -54,6 +54,7 @@ declare class InterviewService {
      * Job seeker creates an interview request with required skills only.
      * No interviewer or time is selected at this stage.
      * Supports coupon-based free interviews.
+     * Uses MongoDB transactions to ensure atomicity.
      */
     createInterviewRequest(data: {
         jobSeekerId: string;

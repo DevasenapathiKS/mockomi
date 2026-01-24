@@ -9,7 +9,8 @@ A comprehensive, production-ready job portal platform built with React.js, Node.
 - Upload and manage resumes (AWS S3)
 - Search and apply for jobs with advanced filters
 - Schedule mock interviews with experienced interviewers
-- 2 free mock interviews, then ₹100 per session
+- Apply coupon codes for free or discounted interviews
+- ₹100 per interview session (or use coupons)
 - View interview recordings and detailed feedback
 - Track application status in real-time
 
@@ -187,9 +188,10 @@ The API is documented using Swagger/OpenAPI. Access the documentation at:
 ## 💳 Payment Integration
 
 The platform uses Razorpay for payment processing:
-- First 2 mock interviews are free
-- Each additional interview costs ₹100
-- Payments are processed before scheduling
+- Each mock interview costs ₹100
+- **Coupon-based system**: Apply coupon codes for free or discounted interviews
+- Coupons have per-user and global usage limits
+- Payments are processed before scheduling (unless using a valid coupon)
 - Refunds available through admin panel
 
 ## 🔐 Security Features
@@ -259,5 +261,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [TailwindCSS](https://tailwindcss.com/)
 - [Razorpay](https://razorpay.com/)
 - [AWS](https://aws.amazon.com/)
-
-

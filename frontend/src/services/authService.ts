@@ -34,8 +34,13 @@ export const authService = {
   // Login user
   login: async (data: LoginData): Promise<AuthResponse> => {
     try {
-      const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', data);
-      return response.data.data!;
+      const response = await api.post<ApiResponse<{ user: User; accessToken: string }>>('/auth/login', data);
+      // RefreshToken is now in httpOnly cookie, not in response
+      return {
+        user: response.data.data!.user,
+        accessToken: response.data.data!.accessToken,
+        refreshToken: '', // Not needed, handled by cookie
+      };
     } catch (error) {
       throw new Error(handleApiError(error as Parameters<typeof handleApiError>[0]));
     }
@@ -51,14 +56,14 @@ export const authService = {
     }
   },
 
-  // Refresh token
-  refreshToken: async (refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> => {
+  // Refresh token (refreshToken is in httpOnly cookie)
+  refreshToken: async (): Promise<{ accessToken: string }> => {
     try {
-      const response = await api.post<ApiResponse<{ tokens: { accessToken: string; refreshToken: string } }>>(
+      const response = await api.post<ApiResponse<{ accessToken: string }>>(
         '/auth/refresh-token',
-        { refreshToken }
+        {} // No body needed, token is in cookie
       );
-      return response.data.data!.tokens;
+      return { accessToken: response.data.data!.accessToken };
     } catch (error) {
       throw new Error(handleApiError(error as Parameters<typeof handleApiError>[0]));
     }

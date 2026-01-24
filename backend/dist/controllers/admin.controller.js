@@ -16,8 +16,12 @@ exports.getAllUsers = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     res.status(200).json({
         success: true,
         data: result.users,
-        total: result.total,
-        totalPages: result.totalPages,
+        pagination: {
+            total: result.total,
+            totalPages: result.totalPages,
+            page: Number(page) || 1,
+            limit: Number(limit) || 10,
+        },
     });
 });
 exports.updateUserStatus = (0, errorHandler_1.asyncHandler)(async (req, res) => {

@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-const API_BASE_URL = 'https://server.mockomi.com/api/v1';
+const API_BASE_URL = 'http://localhost:5001/api/v1';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -10,6 +10,7 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000,
+  withCredentials: true, // Important: Send cookies with requests
 });
 
 // Request interceptor to add auth token
@@ -36,33 +37,27 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refreshToken = useAuthStore.getState().refreshToken;
-      
-      if (refreshToken) {
-        try {
-          // Attempt to refresh the token
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
-            refreshToken,
-          });
+      try {
+        // Attempt to refresh the token (refreshToken is in httpOnly cookie)
+        const response = await axios.post(
+          `${API_BASE_URL}/auth/refresh-token`,
+          {}, // No body needed, token is in cookie
+          { withCredentials: true } // Send cookies
+        );
 
-          const { accessToken, refreshToken: newRefreshToken } = response.data.data.tokens;
-          
-          // Update tokens in store
-          useAuthStore.getState().setTokens(accessToken, newRefreshToken);
+        const { accessToken } = response.data.data;
+        
+        // Update access token in store (refreshToken is in cookie, not stored)
+        useAuthStore.getState().setAccessToken(accessToken);
 
-          // Retry the original request with new token
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        } catch (refreshError) {
-          // If refresh fails, logout the user
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
-        }
-      } else {
-        // No refresh token, logout
+        // Retry the original request with new token
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, logout the user
         useAuthStore.getState().logout();
         window.location.href = '/login';
+        return Promise.reject(refreshError);
       }
     }
 

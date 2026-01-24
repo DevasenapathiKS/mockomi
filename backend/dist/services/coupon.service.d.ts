@@ -1,3 +1,4 @@
+import { ClientSession } from 'mongoose';
 interface ValidateCouponResult {
     valid: boolean;
     remainingUses: number;
@@ -18,8 +19,11 @@ declare class CouponService {
     /**
      * Apply a coupon (increment usage)
      * This should be called atomically during interview creation
+     * Supports MongoDB transactions for data consistency
      */
-    applyCoupon(couponCode: string, userId: string): Promise<ApplyCouponResult>;
+    applyCoupon(couponCode: string, userId: string, options?: {
+        session?: ClientSession;
+    }): Promise<ApplyCouponResult>;
     /**
      * Get user's coupon usage stats
      */
@@ -34,6 +38,8 @@ declare class CouponService {
     createCoupon(data: {
         code: string;
         description: string;
+        discountType: 'percentage' | 'flat';
+        discountValue: number;
         perUserLimit: number;
         globalLimit?: number;
         expiresAt?: Date;
@@ -47,6 +53,8 @@ declare class CouponService {
      */
     updateCoupon(couponId: string, updates: {
         description?: string;
+        discountType?: 'percentage' | 'flat';
+        discountValue?: number;
         perUserLimit?: number;
         globalLimit?: number;
         isActive?: boolean;

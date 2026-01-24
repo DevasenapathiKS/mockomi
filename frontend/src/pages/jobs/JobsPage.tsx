@@ -305,7 +305,7 @@ const JobsPage: React.FC = () => {
               )}
 
               {/* Pagination */}
-              {data && data.pagination && data.pagination.pages > 1 && (
+              {data && data.pagination && data.pagination.totalPages > 1 && (
                 <div className="flex justify-center gap-2 mt-8">
                   <Button
                     variant="outline"
@@ -315,12 +315,12 @@ const JobsPage: React.FC = () => {
                     Previous
                   </Button>
                   <span className="flex items-center px-4 text-sm text-gray-600">
-                    Page {data.pagination.page} of {data.pagination.pages}
+                    Page {data.pagination.page} of {data.pagination.totalPages}
                   </span>
                   <Button
                     variant="outline"
                     onClick={() => setPage(page + 1)}
-                    disabled={page >= data.pagination.pages}
+                    disabled={page >= data.pagination.totalPages}
                   >
                     Next
                   </Button>

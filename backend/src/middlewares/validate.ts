@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AnyZodObject, ZodError } from 'zod';
 import { AppError } from '../utils/errors';
+import { sanitizeObject } from '../utils/sanitize';
 
 export const validate = (schema: AnyZodObject) => {
   return async (
@@ -41,6 +42,11 @@ export const validateBody = (schema: AnyZodObject) => {
     next: NextFunction
   ): Promise<void> => {
     try {
+      // Sanitize input before validation
+      if (req.body && typeof req.body === 'object') {
+        req.body = sanitizeObject(req.body);
+      }
+      
       req.body = await schema.parseAsync(req.body);
       next();
     } catch (error) {

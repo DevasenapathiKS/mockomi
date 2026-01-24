@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateParams = exports.validateQuery = exports.validateBody = exports.validate = void 0;
 const zod_1 = require("zod");
+const sanitize_1 = require("../utils/sanitize");
 const validate = (schema) => {
     return async (req, res, next) => {
         try {
@@ -33,6 +34,10 @@ exports.validate = validate;
 const validateBody = (schema) => {
     return async (req, res, next) => {
         try {
+            // Sanitize input before validation
+            if (req.body && typeof req.body === 'object') {
+                req.body = (0, sanitize_1.sanitizeObject)(req.body);
+            }
             req.body = await schema.parseAsync(req.body);
             next();
         }

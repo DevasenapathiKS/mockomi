@@ -25,8 +25,12 @@ export const getAllUsers = asyncHandler(async (req: AuthRequest, res: Response) 
   res.status(200).json({
     success: true,
     data: result.users,
-    total: result.total,
-    totalPages: result.totalPages,
+    pagination: {
+      total: result.total,
+      totalPages: result.totalPages,
+      page: Number(page) || 1,
+      limit: Number(limit) || 10,
+    },
   });
 });
 

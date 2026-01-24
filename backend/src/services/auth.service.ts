@@ -110,15 +110,45 @@ class AuthService {
     const { email, password } = data;
 
     // Find user with password
-    const user = await User.findOne({ email }).select('+password +refreshTokens');
+    const user = await User.findOne({ email }).select('+password +refreshTokens +failedLoginAttempts +accountLockedUntil');
     if (!user) {
       throw new AppError('Invalid email or password', 401);
     }
 
+    // Check if account is locked
+    if (user.accountLockedUntil && user.accountLockedUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.accountLockedUntil.getTime() - Date.now()) / 60000);
+      throw new AppError(
+        `Account locked due to too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`,
+        423
+      );
+    }
+
     // Check password
     const isPasswordValid = await user.comparePassword(password);
+    
     if (!isPasswordValid) {
+      // Increment failed attempts
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      
+      // Lock account after 5 failed attempts
+      if (user.failedLoginAttempts >= 5) {
+        user.accountLockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        await user.save();
+        throw new AppError(
+          'Account locked due to too many failed attempts. Try again in 30 minutes.',
+          423
+        );
+      }
+      
+      await user.save();
       throw new AppError('Invalid email or password', 401);
+    }
+
+    // Reset failed attempts on successful login
+    if ((user.failedLoginAttempts && user.failedLoginAttempts > 0) || user.accountLockedUntil) {
+      user.failedLoginAttempts = 0;
+      user.accountLockedUntil = null;
     }
 
     // Check user status

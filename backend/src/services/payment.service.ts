@@ -7,6 +7,7 @@ import { AppError } from '../utils/errors';
 import config from '../config';
 import logger from '../utils/logger';
 import notificationService from './notification.service';
+import couponService from './coupon.service';
 
 const razorpay = new Razorpay({
   key_id: config.razorpay.keyId,
@@ -33,13 +34,55 @@ class PaymentService {
   }> {
     const { userId, interviewId, amount, notes } = data;
 
+    // Calculate discounted amount if coupon is provided
+    // Always use base price for interview requests and calculate discount server-side
+    const basePricePaise = config.interview.pricePaise; // Base price in paise (₹100 = 10000 paise)
+    let finalAmount = basePricePaise; // Default to base price
+    
+    // Type guard for notes object
+    const notesObj = notes as Record<string, any> | undefined;
+    
+    // Check if this is an interview request
+    const isInterviewRequest = notesObj && notesObj.reason === 'mock_interview_request';
+    
+    if (isInterviewRequest && notesObj && notesObj.couponCode) {
+      const couponCode = notesObj.couponCode as string;
+      
+      // Validate coupon server-side (security: never trust frontend)
+      const validation = await couponService.validateCoupon(couponCode, userId);
+      if (!validation.valid) {
+        throw new AppError(validation.message || 'Invalid or expired coupon', 400);
+      }
+      
+      // Get coupon details
+      const coupon = validation.coupon;
+      if (coupon) {
+        // Calculate discount based on coupon type (always from base price)
+        if (coupon.discountType === 'percentage') {
+          // Percentage discount: reduce by percentage
+          finalAmount = Math.round(basePricePaise * (1 - coupon.discountValue / 100));
+        } else {
+          // Flat discount: subtract flat amount (coupon.discountValue is in rupees)
+          finalAmount = Math.round(basePricePaise - (coupon.discountValue * 100));
+        }
+        
+        // Ensure minimum amount is ₹1 (10000 paise) for Razorpay
+        finalAmount = Math.max(10000, finalAmount);
+        
+        logger.info(`Coupon ${couponCode} applied for user ${userId}. Original: ₹${basePricePaise / 100}, Discounted: ₹${finalAmount / 100}`);
+      }
+    } else if (!isInterviewRequest) {
+      // For non-interview payments, use the provided amount
+      finalAmount = amount;
+    }
+
     // Create Razorpay order
     const receipt = `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     let razorpayOrder: any;
     try {
       razorpayOrder = await razorpay.orders.create({
-        amount: amount, // amount in paise
+        amount: finalAmount, // Use calculated discounted amount
         currency: 'INR',
         receipt,
         notes: {
@@ -57,12 +100,12 @@ class PaymentService {
       throw new AppError(message, 400);
     }
 
-    // Create payment record
+    // Create payment record with the final calculated amount
     const payment = await Payment.create({
       userId,
       interviewId,
       orderId: receipt,
-      amount,
+      amount: finalAmount, // Store the calculated amount (which includes discount if any)
       currency: 'INR',
       status: PaymentStatus.PENDING,
       razorpayOrderId: razorpayOrder.id,
@@ -92,6 +135,20 @@ class PaymentService {
       throw new AppError('Invalid payment signature', 400);
     }
 
+    // Check idempotency - prevent duplicate processing
+    const idempotencyKey = `${razorpay_order_id}-${razorpay_payment_id}`;
+    const existingPayment = await Payment.findOne({ 
+      $or: [
+        { razorpayPaymentId: razorpay_payment_id },
+        { idempotencyKey }
+      ]
+    });
+
+    if (existingPayment && existingPayment.status === PaymentStatus.COMPLETED) {
+      logger.warn(`Duplicate payment webhook ignored: ${razorpay_payment_id}`);
+      return existingPayment; // Return existing, don't process again
+    }
+
     // Find and update payment
     const payment = await Payment.findOne({ razorpayOrderId: razorpay_order_id });
     if (!payment) {
@@ -100,6 +157,7 @@ class PaymentService {
 
     payment.razorpayPaymentId = razorpay_payment_id;
     payment.razorpaySignature = razorpay_signature;
+    payment.idempotencyKey = idempotencyKey;
     payment.status = PaymentStatus.COMPLETED;
     await payment.save();
 
@@ -161,12 +219,27 @@ class PaymentService {
   }
 
   private async handlePaymentCaptured(paymentEntity: any): Promise<void> {
+    // Check idempotency
+    const idempotencyKey = `${paymentEntity.order_id}-${paymentEntity.id}`;
+    const existingPayment = await Payment.findOne({ 
+      $or: [
+        { razorpayPaymentId: paymentEntity.id },
+        { idempotencyKey }
+      ]
+    });
+
+    if (existingPayment && existingPayment.status === PaymentStatus.COMPLETED) {
+      logger.warn(`Duplicate payment webhook ignored: ${paymentEntity.id}`);
+      return; // Already processed
+    }
+
     const payment = await Payment.findOne({
       razorpayOrderId: paymentEntity.order_id,
     });
 
     if (payment && payment.status !== PaymentStatus.COMPLETED) {
       payment.razorpayPaymentId = paymentEntity.id;
+      payment.idempotencyKey = idempotencyKey;
       payment.status = PaymentStatus.COMPLETED;
       await payment.save();
 

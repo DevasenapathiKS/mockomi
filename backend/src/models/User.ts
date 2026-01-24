@@ -67,6 +67,14 @@ const userSchema = new Schema<IUserDocument>(
       type: Date,
       select: false,
     },
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    accountLockedUntil: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

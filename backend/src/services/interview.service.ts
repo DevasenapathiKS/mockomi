@@ -5,7 +5,8 @@ import { AppError } from '../utils/errors';
 import config from '../config';
 import redis from '../config/redis';
 import logger from '../utils/logger';
-import { Types } from 'mongoose';
+import { Types, ClientSession } from 'mongoose';
+import mongoose from 'mongoose';
 // import paymentService from './payment.service';
 import s3Service from './s3.service';
 import notificationService from './notification.service';
@@ -403,7 +404,35 @@ class InterviewService {
     interview.status = InterviewStatus.COMPLETED;
     await interview.save();
 
-    // Update interviewer stats
+    // Get current interviewer profile to check completed interviews count
+    const interviewerProfile = await InterviewerProfile.findOne({ userId: interviewerId });
+    if (!interviewerProfile) {
+      throw new AppError('Interviewer profile not found', 404);
+    }
+
+    const currentCompletedCount = interviewerProfile.interviewsCompleted || 0;
+    const isFirstInterview = currentCompletedCount === 0;
+
+    // Update interviewer earnings only from second interview onwards
+    // First interview is free (no earnings)
+    if (!isFirstInterview && interview.payment) {
+      const payment = await Payment.findById(interview.payment);
+      if (payment && payment.status === PaymentStatus.COMPLETED) {
+        // Payment amount is in paise, convert to rupees for earnings
+        const earningsAmount = payment.amount / 100;
+        
+        await InterviewerProfile.findOneAndUpdate(
+          { userId: interviewerId },
+          { $inc: { earnings: earningsAmount } }
+        );
+        
+        logger.info(`Earnings updated for interviewer ${interviewerId}: +₹${earningsAmount} (from interview ${interviewId})`);
+      }
+    } else if (isFirstInterview) {
+      logger.info(`First interview completed for interviewer ${interviewerId} - no earnings (free interview)`);
+    }
+
+    // Always increment completed interviews count (for tracking)
     await InterviewerProfile.findOneAndUpdate(
       { userId: interviewerId },
       { $inc: { interviewsCompleted: 1 } }
@@ -640,6 +669,7 @@ class InterviewService {
    * Job seeker creates an interview request with required skills only.
    * No interviewer or time is selected at this stage.
    * Supports coupon-based free interviews.
+   * Uses MongoDB transactions to ensure atomicity.
    */
   async createInterviewRequest(data: {
     jobSeekerId: string;
@@ -655,80 +685,117 @@ class InterviewService {
       throw new AppError('At least one skill must be selected', 400);
     }
 
-    // Check job seeker profile exists
-    const jobSeekerProfile = await JobSeekerProfile.findOne({ userId: jobSeekerId });
-    if (!jobSeekerProfile) {
-      throw new AppError('Job seeker profile not found', 404);
-    }
+    // Start MongoDB transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    let payment = null;
-    let couponApplied = false;
-
-    // Handle coupon if provided
-    if (couponCode) {
-      try {
-        // Apply coupon (this validates and increments usage atomically)
-        await couponService.applyCoupon(couponCode, jobSeekerId);
-        couponApplied = true;
-        logger.info(`Coupon ${couponCode} applied for interview request by user ${jobSeekerId}`);
-      } catch (error: any) {
-        throw new AppError(error.message || 'Invalid or expired coupon', 400);
+    try {
+      // Check job seeker profile exists
+      const jobSeekerProfile = await JobSeekerProfile.findOne({ userId: jobSeekerId }).session(session);
+      if (!jobSeekerProfile) {
+        throw new AppError('Job seeker profile not found', 404);
       }
-    }
 
-    // If no coupon, payment is required
-    if (!couponApplied) {
-      if (!paymentId) {
-        throw new AppError('Payment required for this interview. Apply a coupon or complete payment.', 402);
+      let payment = null;
+      let couponApplied = false;
+
+      // Handle coupon if provided
+      if (couponCode) {
+        try {
+          // Validate coupon first (don't apply yet if payment is also provided)
+          const validation = await couponService.validateCoupon(couponCode, jobSeekerId);
+          if (!validation.valid) {
+            throw new AppError(validation.message || 'Invalid or expired coupon', 400);
+          }
+          
+          // If payment is also provided, it means user paid discounted amount
+          // If no payment, coupon makes it free (100% discount or flat discount covering full amount)
+          if (!paymentId) {
+            // Apply coupon within transaction (this validates and increments usage atomically)
+            await couponService.applyCoupon(couponCode, jobSeekerId, { session });
+            couponApplied = true;
+            logger.info(`Coupon ${couponCode} applied for free interview request by user ${jobSeekerId}`);
+          } else {
+            // Payment + coupon: validate coupon but don't apply yet
+            // We'll apply it after payment validation
+            couponApplied = true;
+            logger.info(`Coupon ${couponCode} validated for discounted payment by user ${jobSeekerId}`);
+          }
+        } catch (error: any) {
+          throw new AppError(error.message || 'Invalid or expired coupon', 400);
+        }
       }
-      payment = await this.validateCompletedPayment(paymentId, jobSeekerId);
-    }
 
-    // Set expiry date (e.g., 7 days from now)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+      // If no coupon, payment is required
+      if (!couponApplied) {
+        if (!paymentId) {
+          throw new AppError('Payment required for this interview. Apply a coupon or complete payment.', 402);
+        }
+        payment = await this.validateCompletedPayment(paymentId, jobSeekerId);
+      } else if (paymentId) {
+        // Coupon + payment: validate payment and apply coupon
+        payment = await this.validateCompletedPayment(paymentId, jobSeekerId);
+        // Apply coupon after payment validation (within transaction)
+        await couponService.applyCoupon(couponCode!, jobSeekerId, { session });
+        logger.info(`Coupon ${couponCode} applied after payment validation for user ${jobSeekerId}`);
+      }
 
-    // Create interview request
-    const interview = await Interview.create({
-      jobSeekerId,
-      interviewerId: null,
-      scheduledAt: null,
-      duration: preferredDuration,
-      requestedSkills,
-      preferredDuration,
-      notes,
-      status: InterviewStatus.REQUESTED,
-      type: 'mock',
-      isPaid: !!payment || couponApplied,
-      payment: payment?._id,
-      expiresAt,
-    });
+      // Set expiry date (e.g., 7 days from now)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
 
-    logger.info(`Interview request created: ${interview._id} with skills: ${requestedSkills.join(', ')}${couponApplied ? ` (Coupon: ${couponCode})` : ''}`);
+      // Create interview request within transaction
+      const [interview] = await Interview.create([{
+        jobSeekerId,
+        interviewerId: null,
+        scheduledAt: null,
+        duration: preferredDuration,
+        requestedSkills,
+        preferredDuration,
+        notes,
+        status: InterviewStatus.REQUESTED,
+        type: 'mock',
+        isPaid: !!payment || couponApplied,
+        payment: payment?._id,
+        expiresAt,
+      }], { session });
 
-    // Update payment reference if payment was made
-    if (payment) {
-      payment.interviewId = interview._id as any;
-      await payment.save();
-    }
+      logger.info(`Interview request created: ${interview._id} with skills: ${requestedSkills.join(', ')}${couponApplied ? ` (Coupon: ${couponCode})` : ''}`);
 
-    // Notify matching interviewers
-    const matchingInterviewers = await InterviewerProfile.find({
-      isApproved: true,
-      expertise: { $in: requestedSkills },
-    });
+      // Update payment reference if payment was made (within transaction)
+      if (payment) {
+        payment.interviewId = interview._id as any;
+        await payment.save({ session });
+      }
 
-    for (const interviewer of matchingInterviewers) {
-      await notificationService.createNotification({
-        userId: interviewer.userId.toString(),
-        type: 'new_interview_request',
-        title: 'New Interview Request Available',
-        message: `A new interview request matching your expertise (${requestedSkills.join(', ')}) is available.`,
-        data: { interviewId: interview._id },
+      // Commit transaction
+      await session.commitTransaction();
+
+      // Notify matching interviewers (outside transaction - these are fire-and-forget)
+      const matchingInterviewers = await InterviewerProfile.find({
+        isApproved: true,
+        expertise: { $in: requestedSkills },
       });
-    }
 
-    return interview;
+      for (const interviewer of matchingInterviewers) {
+        await notificationService.createNotification({
+          userId: interviewer.userId.toString(),
+          type: 'new_interview_request',
+          title: 'New Interview Request Available',
+          message: `A new interview request matching your expertise (${requestedSkills.join(', ')}) is available.`,
+          data: { interviewId: interview._id },
+        });
+      }
+
+      return interview;
+    } catch (error) {
+      // Rollback transaction on error
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      // End session
+      session.endSession();
+    }
   }
 
   /**

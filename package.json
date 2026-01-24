@@ -1,0 +1,24 @@
+{
+  "name": "mockomi",
+  "version": "1.0.0",
+  "description": "A comprehensive, production-ready job portal platform built with React.js, Node.js, MongoDB, and AWS services. The platform connects job seekers, employers, and interviewers, featuring a unique mock interview system with video recording and payment integration.",
+  "homepage": "https://github.com/DevasenapathiKS/mockomi#readme",
+  "bugs": {
+    "url": "https://github.com/DevasenapathiKS/mockomi/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DevasenapathiKS/mockomi.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

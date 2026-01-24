@@ -9,6 +9,8 @@ export interface CouponValidationResult {
     _id: string;
     code: string;
     description: string;
+    discountType: 'percentage' | 'flat';
+    discountValue: number;
     perUserLimit: number;
   };
 }
@@ -20,6 +22,8 @@ export interface CouponUsage {
     _id: string;
     code: string;
     description: string;
+    discountType: 'percentage' | 'flat';
+    discountValue: number;
     perUserLimit: number;
   };
 }

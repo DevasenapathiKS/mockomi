@@ -3,6 +3,8 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 export interface ICouponDocument extends Document {
   code: string;
   description: string;
+  discountType: 'percentage' | 'flat';
+  discountValue: number;
   perUserLimit: number;
   globalLimit?: number;
   totalUsed: number;
@@ -26,6 +28,17 @@ const couponSchema = new Schema<ICouponDocument>(
       type: String,
       required: true,
       trim: true,
+    },
+    discountType: {
+      type: String,
+      enum: ['percentage', 'flat'],
+      default: 'percentage',
+      required: true,
+    },
+    discountValue: {
+      type: Number,
+      required: true,
+      min: 0,
     },
     perUserLimit: {
       type: Number,

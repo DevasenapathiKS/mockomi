@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import {
   CalendarIcon,
   CurrencyRupeeIcon,
-  ClockIcon,
+  // ClockIcon,
   CheckCircleIcon,
   InformationCircleIcon,
   TicketIcon,
@@ -43,12 +43,12 @@ const AVAILABLE_SKILLS = [
   'Behavioral', 'HR Interview', 'Leadership',
 ];
 
-const DURATION_OPTIONS = [
-  { value: 30, label: '30 minutes' },
-  { value: 45, label: '45 minutes' },
-  { value: 60, label: '60 minutes' },
-  { value: 90, label: '90 minutes' },
-];
+// const DURATION_OPTIONS = [
+//   { value: 30, label: '30 minutes' },
+//   { value: 45, label: '45 minutes' },
+//   { value: 60, label: '60 minutes' },
+//   { value: 90, label: '90 minutes' },
+// ];
 
 const ScheduleInterviewPage: React.FC = () => {
   const navigate = useNavigate();
@@ -56,7 +56,7 @@ const ScheduleInterviewPage: React.FC = () => {
   const { user } = useAuthStore();
 
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [preferredDuration, setPreferredDuration] = useState(30);
+  const preferredDuration = 30;
   const [notes, setNotes] = useState('');
   const [skillSearch, setSkillSearch] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -67,6 +67,8 @@ const ScheduleInterviewPage: React.FC = () => {
     code: string;
     remainingUses: number;
     description: string;
+    discountType: 'percentage' | 'flat';
+    discountValue: number;
   } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -84,11 +86,13 @@ const ScheduleInterviewPage: React.FC = () => {
   const validateCouponMutation = useMutation({
     mutationFn: (code: string) => couponService.validateCoupon(code),
     onSuccess: (data) => {
-      if (data.valid) {
+      if (data.valid && data.coupon) {
         setAppliedCoupon({
-          code: data.coupon!.code,
+          code: data.coupon.code,
           remainingUses: data.remainingUses,
-          description: data.coupon!.description,
+          description: data.coupon.description,
+          discountType: data.coupon.discountType || 'percentage',
+          discountValue: data.coupon.discountValue || 0,
         });
         setCouponError(null);
         toast.success(data.message);
@@ -106,14 +110,17 @@ const ScheduleInterviewPage: React.FC = () => {
   });
 
   const createRequestMutation = useMutation({
-    mutationFn: (payload?: { paymentId?: string; couponCode?: string }) => 
-      interviewService.createInterviewRequest({
+    mutationFn: (payload?: { paymentId?: string; couponCode?: string }) => {
+      // If we have both paymentId and couponCode, we need to handle the discount on backend
+      // For now, if payment was made, use paymentId. If coupon makes it free, use couponCode only.
+      return interviewService.createInterviewRequest({
         requestedSkills: selectedSkills,
         preferredDuration,
         notes: notes || undefined,
         paymentId: payload?.paymentId,
         couponCode: payload?.couponCode,
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success('Interview request submitted! You will be notified when an interviewer accepts.');
       queryClient.invalidateQueries({ queryKey: ['my-interviews'] });
@@ -141,19 +148,36 @@ const ScheduleInterviewPage: React.FC = () => {
 
   const startPaymentFlow = async (): Promise<string> => {
     const eligibility = paymentEligibilityQuery.data;
+    const basePrice = eligibility?.pricePerInterview ?? 100;
+    
+    // Calculate discounted amount if coupon is applied
+    let finalAmount = basePrice;
+    if (appliedCoupon) {
+      if (appliedCoupon.discountType === 'percentage') {
+        // Percentage discount: reduce by percentage
+        finalAmount = basePrice * (1 - appliedCoupon.discountValue / 100);
+      } else {
+        // Flat discount: subtract flat amount
+        finalAmount = Math.max(0, basePrice - appliedCoupon.discountValue);
+      }
+    }
+    
     const amountPaise = Math.max(
-      10000,
-      Math.round((eligibility?.pricePerInterview ?? 100) * 100)
+      100, // Minimum 100 rupees in paise
+      Math.round(finalAmount * 100)
     );
 
-    const razorpayKey = 'rzp_test_RxlUrYIiGrG6kN';
+    const razorpayKey = 'rzp_live_S77bquvNBiSN0h';
     if (!razorpayKey) {
       throw new Error('Payment key is not configured. Please contact support.');
     }
 
     const order = await paymentService.createOrder({
       amount: amountPaise,
-      notes: { reason: 'mock_interview_request' },
+      notes: { 
+        reason: 'mock_interview_request',
+        ...(appliedCoupon && { couponCode: appliedCoupon.code }),
+      },
     });
 
     await loadRazorpayScript();
@@ -164,12 +188,22 @@ const ScheduleInterviewPage: React.FC = () => {
         return;
       }
 
+      // Build description with discount info
+      let description = 'Mock interview booking';
+      if (appliedCoupon) {
+        if (appliedCoupon.discountType === 'percentage') {
+          description = `Mock interview booking - ${appliedCoupon.discountValue}% discount applied (Coupon: ${appliedCoupon.code})`;
+        } else {
+          description = `Mock interview booking - ₹${appliedCoupon.discountValue} discount applied (Coupon: ${appliedCoupon.code})`;
+        }
+      }
+
       const razorpay = new window.Razorpay({
         key: razorpayKey,
-        amount: order.amount,
+        amount: amountPaise, // Use the calculated amount directly, not order.amount
         currency: order.currency,
         name: 'Mockomi',
-        description: 'Mock interview booking',
+        description: description,
         order_id: order.orderId,
         handler: async (response: any) => {
           try {
@@ -271,54 +305,87 @@ const ScheduleInterviewPage: React.FC = () => {
       return;
     }
 
-    // Must have either coupon or payment
-    if (!appliedCoupon) {
-      let paymentId: string | undefined;
-      try {
-        setIsProcessingPayment(true);
-        
-        // Start payment flow - this will show Razorpay modal
-        // If user cancels or payment fails, this will throw an error
-        paymentId = await startPaymentFlow();
-        
-        // Only proceed to create interview request if payment was successful
-        if (!paymentId) {
-          throw new Error('Payment verification failed');
-        }
-        
-        toast.success('Payment successful! Creating interview request...');
-        
-        // Create interview request with payment ID
-        await createRequestMutation.mutateAsync({ paymentId });
-      } catch (error: any) {
-        // Handle payment cancellation or failure
-        const errorMessage = error?.message || 'Payment was cancelled or failed';
-        
-        // Only show error if it's not just a cancellation (user-initiated)
-        if (errorMessage.includes('cancelled')) {
-          toast.error('Payment cancelled. Interview request was not created. Please try again when ready.');
-        } else if (errorMessage.includes('failed')) {
-          toast.error(errorMessage);
-        } else {
-          toast.error(errorMessage || 'Failed to process payment. Please try again.');
-        }
-        
-        // Don't create interview request if payment failed or was cancelled
-        return;
-      } finally {
-        setIsProcessingPayment(false);
+    const eligibility = paymentEligibilityQuery.data;
+    const basePrice = eligibility?.pricePerInterview ?? 100;
+    
+    // Calculate if coupon makes it free
+    let isFree = false;
+    if (appliedCoupon) {
+      if (appliedCoupon.discountType === 'percentage') {
+        // Free if 100% discount
+        isFree = appliedCoupon.discountValue >= 100;
+      } else {
+        // Free if flat discount covers full amount
+        isFree = appliedCoupon.discountValue >= basePrice;
       }
-    } else {
-      // Use coupon - no payment needed
+    }
+
+    // If coupon makes it free, skip payment
+    if (appliedCoupon && isFree) {
       try {
         await createRequestMutation.mutateAsync({ couponCode: appliedCoupon.code });
       } catch (error: any) {
         // Error is already handled in the mutation's onError
       }
+      return;
+    }
+
+    // Otherwise, process payment (with or without discount)
+    let paymentId: string | undefined;
+    try {
+      setIsProcessingPayment(true);
+      
+      // Start payment flow - this will show Razorpay modal with discounted amount
+      // If user cancels or payment fails, this will throw an error
+      paymentId = await startPaymentFlow();
+      
+      // Only proceed to create interview request if payment was successful
+      if (!paymentId) {
+        throw new Error('Payment verification failed');
+      }
+      
+      toast.success('Payment successful! Creating interview request...');
+      
+      // Create interview request with payment ID and coupon code (if applied)
+      await createRequestMutation.mutateAsync({ 
+        paymentId,
+        ...(appliedCoupon && { couponCode: appliedCoupon.code }),
+      });
+    } catch (error: any) {
+      // Handle payment cancellation or failure
+      const errorMessage = error?.message || 'Payment was cancelled or failed';
+      
+      // Only show error if it's not just a cancellation (user-initiated)
+      if (errorMessage.includes('cancelled')) {
+        toast.error('Payment cancelled. Interview request was not created. Please try again when ready.');
+      } else if (errorMessage.includes('failed')) {
+        toast.error(errorMessage);
+      } else {
+        toast.error(errorMessage || 'Failed to process payment. Please try again.');
+      }
+      
+      // Don't create interview request if payment failed or was cancelled
+      return;
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
-  const needsPayment = !appliedCoupon;
+  const eligibility = paymentEligibilityQuery.data;
+  const basePrice = eligibility?.pricePerInterview ?? 100;
+  
+  // Calculate discounted price for display
+  let discountedPrice = basePrice;
+  let isFree = false;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === 'percentage') {
+      discountedPrice = basePrice * (1 - appliedCoupon.discountValue / 100);
+      isFree = appliedCoupon.discountValue >= 100;
+    } else {
+      discountedPrice = Math.max(0, basePrice - appliedCoupon.discountValue);
+      isFree = appliedCoupon.discountValue >= basePrice;
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -427,22 +494,38 @@ const ScheduleInterviewPage: React.FC = () => {
         </Card>
 
         {/* Pricing Info */}
-        {needsPayment && (
-          <Card className="mb-8 bg-primary-50 border-primary-200">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-primary-100 rounded-lg">
-                <CurrencyRupeeIcon className="h-6 w-6 text-primary-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-primary-900">Pricing Information</h3>
-                <p className="text-primary-700 mt-1">
-                  Each interview costs ₹{paymentEligibilityQuery.data?.pricePerInterview ?? 100}.
-                  Apply a coupon code above to get a free interview!
-                </p>
-              </div>
+        <Card className="mb-8 bg-primary-50 border-primary-200">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary-100 rounded-lg">
+              <CurrencyRupeeIcon className="h-6 w-6 text-primary-600" />
             </div>
-          </Card>
-        )}
+            <div className="flex-1">
+              <h3 className="font-semibold text-primary-900">Pricing Information</h3>
+              {appliedCoupon && !isFree ? (
+                <div className="mt-2 space-y-1">
+                  <p className="text-primary-700">
+                    <span className="line-through text-gray-500">₹{basePrice}</span>{' '}
+                    <span className="font-semibold text-green-600">₹{Math.round(discountedPrice)}</span>
+                    {' '}({appliedCoupon.discountType === 'percentage' 
+                      ? `${appliedCoupon.discountValue}% off` 
+                      : `₹${appliedCoupon.discountValue} off`})
+                  </p>
+                  <p className="text-sm text-primary-600">
+                    You save ₹{Math.round(basePrice - discountedPrice)}!
+                  </p>
+                </div>
+              ) : appliedCoupon && isFree ? (
+                <p className="text-green-700 font-semibold mt-1">
+                  🎉 This interview is FREE with your coupon!
+                </p>
+              ) : (
+                <p className="text-primary-700 mt-1">
+                  Each interview costs ₹{basePrice}. Apply a coupon code above for discounts!
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
 
         {/* Skills Selection */}
         <Card className="mb-6 p-6">
@@ -627,7 +710,7 @@ const ScheduleInterviewPage: React.FC = () => {
         </Card>
 
         {/* Duration Selection */}
-        <Card className="mb-6 p-6">
+        {/* <Card className="mb-6 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <ClockIcon className="h-5 w-5 mr-2" />
             Preferred Duration
@@ -650,7 +733,7 @@ const ScheduleInterviewPage: React.FC = () => {
               </button>
             ))}
           </div>
-        </Card>
+        </Card> */}
 
         {/* Additional Notes */}
         <Card className="mb-6 p-6">
@@ -680,6 +763,13 @@ const ScheduleInterviewPage: React.FC = () => {
                 <p className="text-sm text-green-600 font-medium mt-1 flex items-center gap-1">
                   <SparklesIcon className="h-4 w-4" />
                   Coupon applied: {appliedCoupon.code}
+                  {!isFree && (
+                    <span className="ml-2">
+                      (₹{Math.round(discountedPrice)} after {appliedCoupon.discountType === 'percentage' 
+                        ? `${appliedCoupon.discountValue}%` 
+                        : `₹${appliedCoupon.discountValue}`} discount)
+                    </span>
+                  )}
                 </p>
               )}
             </div>
@@ -694,7 +784,11 @@ const ScheduleInterviewPage: React.FC = () => {
               }
             >
               <CalendarIcon className="h-5 w-5 mr-2" />
-              {appliedCoupon ? 'Submit Interview Request (Free)' : 'Submit Interview Request'}
+              {appliedCoupon && isFree
+                ? 'Submit Interview Request (Free)'
+                : appliedCoupon
+                ? `Submit Interview Request (₹${Math.round(discountedPrice)})`
+                : `Submit Interview Request (₹${basePrice})`}
             </Button>
           </div>
         </Card>

@@ -57,6 +57,11 @@ const paymentSchema = new Schema<IPaymentDocument>(
     notes: {
       type: Schema.Types.Mixed,
     },
+    idempotencyKey: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow null values
+    },
   },
   {
     timestamps: true,
@@ -80,7 +85,9 @@ paymentSchema.index({ createdAt: -1 });
 
 // Compound indexes
 paymentSchema.index({ userId: 1, status: 1 });
-paymentSchema.index({ userId: 1, createdAt: -1 });
+paymentSchema.index({ userId: 1, status: 1, createdAt: -1 });
+paymentSchema.index({ razorpayOrderId: 1 }, { unique: true });
+paymentSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 
 const Payment = mongoose.model<IPaymentDocument>('Payment', paymentSchema);
 

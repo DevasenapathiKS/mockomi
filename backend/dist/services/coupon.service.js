@@ -60,35 +60,36 @@ class CouponService {
                 _id: coupon._id,
                 code: coupon.code,
                 description: coupon.description,
-                perUserLimit: coupon.perUserLimit,
+                discountType: coupon.discountType,
+                discountValue: coupon.discountValue,
             },
         };
     }
     /**
      * Apply a coupon (increment usage)
      * This should be called atomically during interview creation
+     * Supports MongoDB transactions for data consistency
      */
-    async applyCoupon(couponCode, userId) {
+    async applyCoupon(couponCode, userId, options) {
         const code = couponCode.toUpperCase().trim();
+        const session = options?.session;
         // Re-validate coupon (security: never trust frontend)
         const validation = await this.validateCoupon(code, userId);
         if (!validation.valid) {
             throw new errors_1.AppError(validation.message, 400);
         }
-        const coupon = await Coupon_1.default.findOne({ code, isActive: true });
+        const coupon = await Coupon_1.default.findOne({ code, isActive: true }).session(session || null);
         if (!coupon) {
             throw new errors_1.AppError('Coupon not found', 404);
         }
-        // Use transaction-like approach with findOneAndUpdate for atomicity
+        // Use findOneAndUpdate for atomicity, with session support
         const userUsage = await CouponUsage_1.default.findOneAndUpdate({ userId, couponId: coupon._id }, {
             $inc: { usageCount: 1 },
             $set: { lastUsedAt: new Date() },
             $setOnInsert: { userId, couponId: coupon._id },
-        }, { upsert: true, new: true });
-        // Increment global usage count
-        await Coupon_1.default.findByIdAndUpdate(coupon._id, {
-            $inc: { totalUsed: 1 },
-        });
+        }, { upsert: true, new: true, session: session || undefined });
+        // Increment global usage count (within transaction if session provided)
+        await Coupon_1.default.findByIdAndUpdate(coupon._id, { $inc: { totalUsed: 1 } }, { session: session || undefined });
         const remainingUses = Math.max(0, coupon.perUserLimit - userUsage.usageCount);
         logger_1.default.info(`Coupon ${code} applied by user ${userId}. Usage: ${userUsage.usageCount}/${coupon.perUserLimit}`);
         return {
@@ -123,6 +124,8 @@ class CouponService {
                 _id: coupon._id,
                 code: coupon.code,
                 description: coupon.description,
+                discountType: coupon.discountType,
+                discountValue: coupon.discountValue,
                 perUserLimit: coupon.perUserLimit,
             },
         };
@@ -140,6 +143,8 @@ class CouponService {
         const coupon = await Coupon_1.default.create({
             code,
             description: data.description,
+            discountType: data.discountType,
+            discountValue: data.discountValue,
             perUserLimit: data.perUserLimit,
             globalLimit: data.globalLimit,
             expiresAt: data.expiresAt,

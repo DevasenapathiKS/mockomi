@@ -6,4 +6,5 @@ export { notificationService } from './notificationService';
 export { paymentService } from './paymentService';
 export { withdrawalService } from './withdrawalService';
 export { couponService } from './couponService';
+export { adminService } from './adminService';
 export { default as api } from './api';

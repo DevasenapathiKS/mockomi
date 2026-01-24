@@ -2,6 +2,8 @@ import mongoose, { Document, Types } from 'mongoose';
 export interface ICouponDocument extends Document {
     code: string;
     description: string;
+    discountType: 'percentage' | 'flat';
+    discountValue: number;
     perUserLimit: number;
     globalLimit?: number;
     totalUsed: number;

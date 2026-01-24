@@ -12,6 +12,7 @@ import {
   XCircleIcon,
   PlayIcon,
   CurrencyRupeeIcon,
+  StopIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { interviewService } from '@/services/interviewService';
@@ -53,9 +54,19 @@ const InterviewsPage: React.FC = () => {
     mutationFn: (data: { interviewId: string; feedback: any }) =>
       interviewService.submitFeedback(data.interviewId, data.feedback),
     onSuccess: () => {
-      toast.success('Feedback submitted successfully!');
+      toast.success('Feedback submitted successfully! Interview has been completed.');
       setFeedbackModal(false);
       setSelectedInterview(null);
+      setFeedback({
+        rating: 0,
+        technicalSkills: 0,
+        communication: 0,
+        problemSolving: 0,
+        strengths: '',
+        improvements: '',
+        overallComments: '',
+        recommendation: 'maybe',
+      });
       queryClient.invalidateQueries({ queryKey: ['my-interviews'] });
     },
     onError: (error: Error) => {
@@ -100,7 +111,9 @@ const InterviewsPage: React.FC = () => {
     return config[status] || { variant: 'gray', label: status };
   };
 
-  const handleOpenFeedback = (interview: any) => {
+  const handleEndInterview = (interview: any) => {
+    // End interview opens feedback modal (mandatory)
+    // This is the only way to complete an interview - feedback is required
     setSelectedInterview(interview);
     setFeedbackModal(true);
   };
@@ -108,20 +121,42 @@ const InterviewsPage: React.FC = () => {
   const handleSubmitFeedback = () => {
     if (!selectedInterview) return;
 
+    // Validate required fields
+    if (feedback.rating === 0) {
+      toast.error('Please provide an overall rating');
+      return;
+    }
+    if (feedback.technicalSkills === 0) {
+      toast.error('Please rate technical skills');
+      return;
+    }
+    if (feedback.communication === 0) {
+      toast.error('Please rate communication skills');
+      return;
+    }
+    if (feedback.problemSolving === 0) {
+      toast.error('Please rate problem solving skills');
+      return;
+    }
+    if (!feedback.strengths || feedback.strengths.trim().length === 0) {
+      toast.error('Please provide at least one strength');
+      return;
+    }
+    if (!feedback.improvements || feedback.improvements.trim().length === 0) {
+      toast.error('Please provide at least one area for improvement');
+      return;
+    }
+
     // Backend expects arrays and specific field names; map our UI state accordingly
     const strengthsArr = feedback.strengths
-      ? feedback.strengths
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean)
-      : [];
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     const improvementsArr = feedback.improvements
-      ? feedback.improvements
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean)
-      : [];
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     const payload = {
       rating: feedback.rating,
@@ -285,7 +320,7 @@ const InterviewsPage: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
 
                         {isInterviewer && interview.status === InterviewStatus.SCHEDULED && (
@@ -295,7 +330,20 @@ const InterviewsPage: React.FC = () => {
                             isLoading={startInterviewMutation.isPending}
                           >
                             <PlayIcon className="h-4 w-4 mr-1" />
-                            Start
+                            Start Interview
+                          </Button>
+                        )}
+
+                        {/* End Interview Button - Opens mandatory feedback modal */}
+                        {isInterviewer && interview.status === InterviewStatus.IN_PROGRESS && (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => handleEndInterview(interview)}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            <StopIcon className="h-4 w-4 mr-1" />
+                            End Interview
                           </Button>
                         )}
 
@@ -322,18 +370,7 @@ const InterviewsPage: React.FC = () => {
                             }}
                           >
                             <PlayIcon className="h-4 w-4 mr-1" />
-                            Join
-                          </Button>
-                        )}
-
-                        {interview.status === InterviewStatus.COMPLETED && isInterviewer && !interview.feedback && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenFeedback(interview)}
-                          >
-                            <StarIcon className="h-4 w-4 mr-1" />
-                            Give Feedback
+                            Join Meeting
                           </Button>
                         )}
 
@@ -343,6 +380,7 @@ const InterviewsPage: React.FC = () => {
                             variant="outline"
                             onClick={() => setViewFeedback(interview.feedback)}
                           >
+                            <StarIcon className="h-4 w-4 mr-1" />
                             View Feedback
                           </Button>
                         )}
@@ -384,7 +422,7 @@ const InterviewsPage: React.FC = () => {
         )}
 
         {/* Pagination */}
-        {pagination && pagination.pages > 1 && (
+        {pagination && pagination.totalPages > 1 && (
           <div className="flex justify-center gap-2 mt-8">
             <Button
               variant="outline"
@@ -394,81 +432,125 @@ const InterviewsPage: React.FC = () => {
               Previous
             </Button>
             <span className="flex items-center px-4 text-sm text-gray-600">
-              Page {pagination.page} of {pagination.pages}
+              Page {pagination.page} of {pagination.totalPages}
             </span>
             <Button
               variant="outline"
               onClick={() => setPage(page + 1)}
-              disabled={page >= pagination.pages}
+              disabled={page >= pagination.totalPages}
             >
               Next
             </Button>
           </div>
         )}
 
-        {/* Feedback Modal */}
+        {/* Feedback Modal - Mandatory when ending interview */}
         <Modal
           isOpen={feedbackModal}
-          onClose={() => setFeedbackModal(false)}
-          title="Submit Interview Feedback"
+          onClose={() => {
+            // Prevent closing if interview is IN_PROGRESS (mandatory feedback)
+            if (selectedInterview?.status === InterviewStatus.IN_PROGRESS) {
+              toast.error('Feedback is required to end the interview. Please complete the feedback form.');
+              return;
+            }
+            setFeedbackModal(false);
+            setSelectedInterview(null);
+          }}
+          title={
+            selectedInterview?.status === InterviewStatus.IN_PROGRESS
+              ? 'End Interview & Submit Feedback (Required)'
+              : 'Submit Interview Feedback'
+          }
           size="lg"
         >
+          {selectedInterview?.status === InterviewStatus.IN_PROGRESS && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Feedback is required</strong> to end the interview. The interview will be marked as completed once you submit feedback.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Overall Rating
+                Overall Rating <span className="text-red-500">*</span>
               </label>
               <RatingStars
                 value={feedback.rating}
                 onChange={(val) => setFeedback({ ...feedback, rating: val })}
               />
+              {feedback.rating === 0 && selectedInterview?.status === InterviewStatus.IN_PROGRESS && (
+                <p className="text-xs text-red-500 mt-1">This field is required</p>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Technical Skills
+                  Technical Skills <span className="text-red-500">*</span>
                 </label>
                 <RatingStars
                   value={feedback.technicalSkills}
                   onChange={(val) => setFeedback({ ...feedback, technicalSkills: val })}
                 />
+                {feedback.technicalSkills === 0 && selectedInterview?.status === InterviewStatus.IN_PROGRESS && (
+                  <p className="text-xs text-red-500 mt-1">Required</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Communication
+                  Communication <span className="text-red-500">*</span>
                 </label>
                 <RatingStars
                   value={feedback.communication}
                   onChange={(val) => setFeedback({ ...feedback, communication: val })}
                 />
+                {feedback.communication === 0 && selectedInterview?.status === InterviewStatus.IN_PROGRESS && (
+                  <p className="text-xs text-red-500 mt-1">Required</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Problem Solving
+                  Problem Solving <span className="text-red-500">*</span>
                 </label>
                 <RatingStars
                   value={feedback.problemSolving}
                   onChange={(val) => setFeedback({ ...feedback, problemSolving: val })}
                 />
+                {feedback.problemSolving === 0 && selectedInterview?.status === InterviewStatus.IN_PROGRESS && (
+                  <p className="text-xs text-red-500 mt-1">Required</p>
+                )}
               </div>
             </div>
 
-            <Textarea
-              label="Strengths"
-              placeholder="What did the candidate do well?"
-              value={feedback.strengths}
-              onChange={(e) => setFeedback({ ...feedback, strengths: e.target.value })}
-              rows={3}
-            />
+            <div>
+              <Textarea
+                label="Strengths"
+                placeholder="What did the candidate do well? (One per line)"
+                value={feedback.strengths}
+                onChange={(e) => setFeedback({ ...feedback, strengths: e.target.value })}
+                rows={3}
+                required={selectedInterview?.status === InterviewStatus.IN_PROGRESS}
+              />
+              {(!feedback.strengths || feedback.strengths.trim().length === 0) && selectedInterview?.status === InterviewStatus.IN_PROGRESS && (
+                <p className="text-xs text-red-500 mt-1">At least one strength is required</p>
+              )}
+            </div>
 
-            <Textarea
-              label="Areas for Improvement"
-              placeholder="What could the candidate improve?"
-              value={feedback.improvements}
-              onChange={(e) => setFeedback({ ...feedback, improvements: e.target.value })}
-              rows={3}
-            />
+            <div>
+              <Textarea
+                label="Areas for Improvement"
+                placeholder="What could the candidate improve? (One per line)"
+                value={feedback.improvements}
+                onChange={(e) => setFeedback({ ...feedback, improvements: e.target.value })}
+                rows={3}
+                required={selectedInterview?.status === InterviewStatus.IN_PROGRESS}
+              />
+              {(!feedback.improvements || feedback.improvements.trim().length === 0) && selectedInterview?.status === InterviewStatus.IN_PROGRESS && (
+                <p className="text-xs text-red-500 mt-1">At least one area for improvement is required</p>
+              )}
+            </div>
 
             <Textarea
               label="Overall Comments"
@@ -506,14 +588,35 @@ const InterviewsPage: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setFeedbackModal(false)}>
-                Cancel
-              </Button>
+              {selectedInterview?.status !== InterviewStatus.IN_PROGRESS && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFeedbackModal(false);
+                    setSelectedInterview(null);
+                    setFeedback({
+                      rating: 0,
+                      technicalSkills: 0,
+                      communication: 0,
+                      problemSolving: 0,
+                      strengths: '',
+                      improvements: '',
+                      overallComments: '',
+                      recommendation: 'maybe',
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
               <Button
                 onClick={handleSubmitFeedback}
                 isLoading={submitFeedbackMutation.isPending}
+                variant={selectedInterview?.status === InterviewStatus.IN_PROGRESS ? 'primary' : undefined}
               >
-                Submit Feedback
+                {selectedInterview?.status === InterviewStatus.IN_PROGRESS
+                  ? 'Submit Feedback & Complete Interview'
+                  : 'Submit Feedback'}
               </Button>
             </div>
           </div>
