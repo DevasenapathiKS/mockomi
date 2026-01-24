@@ -13,7 +13,7 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'https://server.mockomi.com',
         changeOrigin: true,
       },
     },

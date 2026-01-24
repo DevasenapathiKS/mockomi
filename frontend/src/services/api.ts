@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-const API_BASE_URL = 'http://localhost:5001/api/v1';
+const API_BASE_URL = 'https://server.mockomi.com/api/v1';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
