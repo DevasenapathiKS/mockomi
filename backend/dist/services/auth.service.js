@@ -53,6 +53,12 @@ class AuthService {
             role,
             phone,
             status: role === types_1.UserRole.INTERVIEWER ? types_1.UserStatus.PENDING : types_1.UserStatus.ACTIVE,
+            authProviders: {
+                local: {
+                    enabled: true,
+                    createdAt: new Date(),
+                },
+            },
         });
         // Create role-specific profile
         await this.createRoleProfile(user._id.toString(), role);

@@ -23,4 +23,12 @@ export declare const handlePayoutWebhook: (req: import("express").Request, res: 
  * Admin: Get all withdrawals
  */
 export declare const getAllWithdrawals: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+/**
+ * Admin: Approve a pending withdrawal (credits amount to bank account).
+ */
+export declare const approveWithdrawal: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+/**
+ * Admin: Reject a pending withdrawal request.
+ */
+export declare const rejectWithdrawal: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
 //# sourceMappingURL=withdrawal.controller.d.ts.map

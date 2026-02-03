@@ -216,14 +216,14 @@ export declare const socialLinksSchema: z.ZodObject<{
     other: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, "strip", z.ZodTypeAny, {
     other?: string[] | undefined;
-    linkedin?: string | undefined;
     github?: string | undefined;
+    linkedin?: string | undefined;
     portfolio?: string | undefined;
     twitter?: string | undefined;
 }, {
     other?: string[] | undefined;
-    linkedin?: string | undefined;
     github?: string | undefined;
+    linkedin?: string | undefined;
     portfolio?: string | undefined;
     twitter?: string | undefined;
 }>;
@@ -427,14 +427,14 @@ export declare const jobSeekerProfileSchema: z.ZodObject<{
         other: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strip", z.ZodTypeAny, {
         other?: string[] | undefined;
-        linkedin?: string | undefined;
         github?: string | undefined;
+        linkedin?: string | undefined;
         portfolio?: string | undefined;
         twitter?: string | undefined;
     }, {
         other?: string[] | undefined;
-        linkedin?: string | undefined;
         github?: string | undefined;
+        linkedin?: string | undefined;
         portfolio?: string | undefined;
         twitter?: string | undefined;
     }>>;
@@ -542,8 +542,8 @@ export declare const jobSeekerProfileSchema: z.ZodObject<{
     }[] | undefined;
     socialLinks?: {
         other?: string[] | undefined;
-        linkedin?: string | undefined;
         github?: string | undefined;
+        linkedin?: string | undefined;
         portfolio?: string | undefined;
         twitter?: string | undefined;
     } | undefined;
@@ -617,8 +617,8 @@ export declare const jobSeekerProfileSchema: z.ZodObject<{
     }[] | undefined;
     socialLinks?: {
         other?: string[] | undefined;
-        linkedin?: string | undefined;
         github?: string | undefined;
+        linkedin?: string | undefined;
         portfolio?: string | undefined;
         twitter?: string | undefined;
     } | undefined;
@@ -671,14 +671,14 @@ export declare const companyProfileSchema: z.ZodObject<{
         other: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strip", z.ZodTypeAny, {
         other?: string[] | undefined;
-        linkedin?: string | undefined;
         github?: string | undefined;
+        linkedin?: string | undefined;
         portfolio?: string | undefined;
         twitter?: string | undefined;
     }, {
         other?: string[] | undefined;
-        linkedin?: string | undefined;
         github?: string | undefined;
+        linkedin?: string | undefined;
         portfolio?: string | undefined;
         twitter?: string | undefined;
     }>>;
@@ -688,8 +688,8 @@ export declare const companyProfileSchema: z.ZodObject<{
     description?: string | undefined;
     socialLinks?: {
         other?: string[] | undefined;
-        linkedin?: string | undefined;
         github?: string | undefined;
+        linkedin?: string | undefined;
         portfolio?: string | undefined;
         twitter?: string | undefined;
     } | undefined;
@@ -711,8 +711,8 @@ export declare const companyProfileSchema: z.ZodObject<{
     description?: string | undefined;
     socialLinks?: {
         other?: string[] | undefined;
-        linkedin?: string | undefined;
         github?: string | undefined;
+        linkedin?: string | undefined;
         portfolio?: string | undefined;
         twitter?: string | undefined;
     } | undefined;

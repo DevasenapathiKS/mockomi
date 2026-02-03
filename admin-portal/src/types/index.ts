@@ -137,3 +137,33 @@ export interface SystemHealth {
     arrayBuffers: number;
   };
 }
+
+// Withdrawal types (admin)
+export enum WithdrawalStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  REVERSED = 'reversed',
+  REJECTED = 'rejected',
+}
+
+export interface AdminWithdrawal {
+  _id: string;
+  userId: { _id: string; firstName: string; lastName: string; email: string };
+  amount: number;
+  currency: string;
+  method: 'bank_transfer' | 'upi';
+  status: WithdrawalStatus;
+  bankDetails?: {
+    accountHolderName: string;
+    accountNumber: string;
+    ifscCode: string;
+    bankName: string;
+  };
+  upiId?: string;
+  failureReason?: string;
+  processedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}

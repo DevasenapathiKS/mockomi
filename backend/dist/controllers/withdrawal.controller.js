@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllWithdrawals = exports.handlePayoutWebhook = exports.getWithdrawalStats = exports.getWithdrawalById = exports.getMyWithdrawals = exports.createWithdrawal = void 0;
+exports.rejectWithdrawal = exports.approveWithdrawal = exports.getAllWithdrawals = exports.handlePayoutWebhook = exports.getWithdrawalStats = exports.getWithdrawalById = exports.getMyWithdrawals = exports.createWithdrawal = void 0;
 const services_1 = require("../services");
 const types_1 = require("../types");
 const errorHandler_1 = require("../middlewares/errorHandler");
@@ -103,6 +103,29 @@ exports.getAllWithdrawals = (0, errorHandler_1.asyncHandler)(async (req, res) =>
         success: true,
         data: withdrawals,
         pagination,
+    });
+});
+/**
+ * Admin: Approve a pending withdrawal (credits amount to bank account).
+ */
+exports.approveWithdrawal = (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const withdrawal = await services_1.withdrawalService.approveWithdrawal(req.params.id, req.user.id);
+    res.status(200).json({
+        success: true,
+        message: 'Withdrawal approved. Amount will be credited to the bank account.',
+        data: withdrawal,
+    });
+});
+/**
+ * Admin: Reject a pending withdrawal request.
+ */
+exports.rejectWithdrawal = (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { reason } = req.body || {};
+    const withdrawal = await services_1.withdrawalService.rejectWithdrawal(req.params.id, req.user.id, reason);
+    res.status(200).json({
+        success: true,
+        message: 'Withdrawal request rejected.',
+        data: withdrawal,
     });
 });
 //# sourceMappingURL=withdrawal.controller.js.map

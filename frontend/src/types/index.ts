@@ -357,11 +357,12 @@ export interface Interview {
 
 // Withdrawal types
 export enum WithdrawalStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
+  PENDING = 'pending',       // Awaiting admin approval
+  PROCESSING = 'processing', // Admin approved, payout in progress
+  COMPLETED = 'completed',   // Amount credited to bank account
   FAILED = 'failed',
   REVERSED = 'reversed',
+  REJECTED = 'rejected',     // Admin rejected the request
 }
 
 export enum WithdrawalMethod {

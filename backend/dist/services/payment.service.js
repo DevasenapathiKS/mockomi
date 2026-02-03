@@ -12,6 +12,10 @@ const config_1 = __importDefault(require("../config"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const notification_service_1 = __importDefault(require("./notification.service"));
 const coupon_service_1 = __importDefault(require("./coupon.service"));
+// Validate Razorpay credentials on initialization
+if (!config_1.default.razorpay.keyId || !config_1.default.razorpay.keySecret) {
+    logger_1.default.error('Razorpay credentials are not configured. Payment functionality will be unavailable.');
+}
 const razorpay = new razorpay_1.default({
     key_id: config_1.default.razorpay.keyId,
     key_secret: config_1.default.razorpay.keySecret,
@@ -57,6 +61,10 @@ class PaymentService {
         }
         // Create Razorpay order
         const receipt = `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        // Validate Razorpay is properly configured
+        if (!config_1.default.razorpay.keyId || !config_1.default.razorpay.keySecret) {
+            throw new errors_1.AppError('Payment gateway is not configured. Please contact support.', 503);
+        }
         let razorpayOrder;
         try {
             razorpayOrder = await razorpay.orders.create({
@@ -74,7 +82,7 @@ class PaymentService {
             const message = err?.error?.description ||
                 err?.message ||
                 'Failed to create payment order with Razorpay';
-            logger_1.default.error(`Razorpay order creation failed: ${message}`);
+            logger_1.default.error(`Razorpay order creation failed: ${message}`, { error: err });
             throw new errors_1.AppError(message, 400);
         }
         // Create payment record with the final calculated amount

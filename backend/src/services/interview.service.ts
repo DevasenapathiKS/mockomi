@@ -281,12 +281,29 @@ class InterviewService {
       },
       { $unwind: '$interview' },
       { $match: { 'interview.interviewerId': new Types.ObjectId(interviewerId), ...(matchInterview.createdAt ? { 'interview.createdAt': matchInterview.createdAt } : {}) } },
+      // Lookup user (job seeker) to get candidate name
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'interview.jobSeekerId',
+          foreignField: '_id',
+          as: 'candidate',
+        },
+      },
+      { $unwind: { path: '$candidate', preserveNullAndEmptyArrays: true } },
       {
         $project: {
           amount: 1,
           status: 1,
           createdAt: 1,
           interview: 1,
+          candidateName: {
+            $concat: [
+              { $ifNull: ['$candidate.firstName', ''] },
+              ' ',
+              { $ifNull: ['$candidate.lastName', ''] }
+            ]
+          },
         },
       },
     ]);
@@ -304,10 +321,13 @@ class InterviewService {
         pendingAmount += p.amount;
       }
 
+      // Use candidateName from aggregation or fallback
+      const candidateName = p.candidateName?.trim() || 'Candidate';
+
       earnings.push({
         id: p._id.toString(),
         interviewId: p.interview._id.toString(),
-        candidateName: p.interview.jobSeekerId?.toString?.() || 'Candidate',
+        candidateName: candidateName || 'Candidate',
         date: p.interview.scheduledAt ? p.interview.scheduledAt.toISOString() : p.createdAt.toISOString(),
         duration: p.interview.duration || 60,
         amount: Math.round(p.amount / 100),

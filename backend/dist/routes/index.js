@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_routes_1 = __importDefault(require("./auth.routes"));
+const oauth_routes_1 = __importDefault(require("./oauth.routes"));
 const job_routes_1 = __importDefault(require("./job.routes"));
 const application_routes_1 = __importDefault(require("./application.routes"));
 const interview_routes_1 = __importDefault(require("./interview.routes"));
@@ -18,8 +19,10 @@ const health_routes_1 = __importDefault(require("./health.routes"));
 const router = (0, express_1.Router)();
 // Health check routes (before other routes for quick access)
 router.use('/health', health_routes_1.default);
+// Authentication routes
+router.use('/auth', auth_routes_1.default); // Email/password authentication
+router.use('/oauth', oauth_routes_1.default); // OAuth social login (Google, GitHub, LinkedIn)
 // API routes
-router.use('/auth', auth_routes_1.default);
 router.use('/jobs', job_routes_1.default);
 router.use('/applications', application_routes_1.default);
 router.use('/interviews', interview_routes_1.default);

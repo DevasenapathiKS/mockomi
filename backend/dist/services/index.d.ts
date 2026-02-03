@@ -1,4 +1,5 @@
 export { default as authService } from './auth.service';
+export { default as oauthService } from './oauth.service';
 export { default as jobService } from './job.service';
 export { default as applicationService } from './application.service';
 export { default as interviewService } from './interview.service';

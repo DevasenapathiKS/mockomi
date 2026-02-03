@@ -33,8 +33,9 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.couponController = exports.withdrawalController = exports.adminController = exports.notificationController = exports.paymentController = exports.profileController = exports.interviewController = exports.applicationController = exports.jobController = exports.authController = void 0;
+exports.couponController = exports.withdrawalController = exports.adminController = exports.notificationController = exports.paymentController = exports.profileController = exports.interviewController = exports.applicationController = exports.jobController = exports.oauthController = exports.authController = void 0;
 exports.authController = __importStar(require("./auth.controller"));
+exports.oauthController = __importStar(require("./oauth.controller"));
 exports.jobController = __importStar(require("./job.controller"));
 exports.applicationController = __importStar(require("./application.controller"));
 exports.interviewController = __importStar(require("./interview.controller"));

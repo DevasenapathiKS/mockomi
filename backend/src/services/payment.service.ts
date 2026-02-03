@@ -9,6 +9,11 @@ import logger from '../utils/logger';
 import notificationService from './notification.service';
 import couponService from './coupon.service';
 
+// Validate Razorpay credentials on initialization
+if (!config.razorpay.keyId || !config.razorpay.keySecret) {
+  logger.error('Razorpay credentials are not configured. Payment functionality will be unavailable.');
+}
+
 const razorpay = new Razorpay({
   key_id: config.razorpay.keyId,
   key_secret: config.razorpay.keySecret,
@@ -79,6 +84,11 @@ class PaymentService {
     // Create Razorpay order
     const receipt = `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    // Validate Razorpay is properly configured
+    if (!config.razorpay.keyId || !config.razorpay.keySecret) {
+      throw new AppError('Payment gateway is not configured. Please contact support.', 503);
+    }
+
     let razorpayOrder: any;
     try {
       razorpayOrder = await razorpay.orders.create({
@@ -96,7 +106,7 @@ class PaymentService {
         err?.error?.description ||
         err?.message ||
         'Failed to create payment order with Razorpay';
-      logger.error(`Razorpay order creation failed: ${message}`);
+      logger.error(`Razorpay order creation failed: ${message}`, { error: err });
       throw new AppError(message, 400);
     }
 

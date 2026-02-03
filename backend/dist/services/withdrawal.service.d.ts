@@ -20,6 +20,14 @@ declare class WithdrawalService {
      */
     createWithdrawal(data: CreateWithdrawalData, transferDetails: BankTransferData | UpiTransferData): Promise<IWithdrawalDocument>;
     /**
+     * Admin: Approve a pending withdrawal and credit amount to bank account (via Razorpay or manual).
+     */
+    approveWithdrawal(withdrawalId: string, adminId: string): Promise<IWithdrawalDocument>;
+    /**
+     * Admin: Reject a pending withdrawal request.
+     */
+    rejectWithdrawal(withdrawalId: string, adminId: string, reason?: string): Promise<IWithdrawalDocument>;
+    /**
      * Process payout via Razorpay
      * NOTE: RazorpayX Payouts API requires a separate business account.
      * For testing, we simulate the payout by marking it as completed.

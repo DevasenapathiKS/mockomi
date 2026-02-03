@@ -17,6 +17,8 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { clsx } from 'clsx';
+import { SocialLoginButton } from '@/components/auth/SocialLoginButton';
+import { toast } from 'react-hot-toast';
 
 const registerSchema = z
   .object({
@@ -265,6 +267,47 @@ const RegisterPage: React.FC = () => {
             <Button type="submit" fullWidth isLoading={isRegistering} size="lg">
               Create account
             </Button>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-white px-2 text-gray-500">Or sign up with</span>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-3">
+                <SocialLoginButton
+                  provider="google"
+                  onSuccess={() => {
+                    toast.success('Successfully signed up with Google');
+                  }}
+                  onError={(error) => {
+                    toast.error(error);
+                  }}
+                />
+                <SocialLoginButton
+                  provider="github"
+                  onSuccess={() => {
+                    toast.success('Successfully signed up with GitHub');
+                  }}
+                  onError={(error) => {
+                    toast.error(error);
+                  }}
+                />
+                <SocialLoginButton
+                  provider="linkedin"
+                  onSuccess={() => {
+                    toast.success('Successfully signed up with LinkedIn');
+                  }}
+                  onError={(error) => {
+                    toast.error(error);
+                  }}
+                />
+              </div>
+            </div>
           </form>
         </Card>
       </div>

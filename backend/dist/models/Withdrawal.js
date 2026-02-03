@@ -58,7 +58,7 @@ const withdrawalSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: Object.values(types_1.WithdrawalStatus),
+        enum: [...Object.values(types_1.WithdrawalStatus)],
         default: types_1.WithdrawalStatus.PENDING,
     },
     bankDetails: {

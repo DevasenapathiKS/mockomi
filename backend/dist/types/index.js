@@ -75,6 +75,7 @@ var WithdrawalStatus;
     WithdrawalStatus["COMPLETED"] = "completed";
     WithdrawalStatus["FAILED"] = "failed";
     WithdrawalStatus["REVERSED"] = "reversed";
+    WithdrawalStatus["REJECTED"] = "rejected";
 })(WithdrawalStatus || (exports.WithdrawalStatus = WithdrawalStatus = {}));
 // Withdrawal Method
 var WithdrawalMethod;

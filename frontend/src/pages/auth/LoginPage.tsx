@@ -9,6 +9,8 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { SocialLoginButton } from '@/components/auth/SocialLoginButton';
+import { toast } from 'react-hot-toast';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -121,6 +123,47 @@ const LoginPage: React.FC = () => {
               Sign in
             </Button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <SocialLoginButton
+                provider="google"
+                onSuccess={() => {
+                  toast.success('Successfully signed in with Google');
+                }}
+                onError={(error) => {
+                  toast.error(error);
+                }}
+              />
+              <SocialLoginButton
+                provider="github"
+                onSuccess={() => {
+                  toast.success('Successfully signed in with GitHub');
+                }}
+                onError={(error) => {
+                  toast.error(error);
+                }}
+              />
+              <SocialLoginButton
+                provider="linkedin"
+                onSuccess={() => {
+                  toast.success('Successfully signed in with LinkedIn');
+                }}
+                onError={(error) => {
+                  toast.error(error);
+                }}
+              />
+            </div>
+          </div>
 
           <div className="mt-6">
             <div className="relative">

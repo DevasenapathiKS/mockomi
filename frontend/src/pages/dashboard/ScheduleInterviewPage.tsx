@@ -167,7 +167,7 @@ const ScheduleInterviewPage: React.FC = () => {
       Math.round(finalAmount * 100)
     );
 
-    const razorpayKey = 'rzp_live_S77bquvNBiSN0h';
+    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
     if (!razorpayKey) {
       throw new Error('Payment key is not configured. Please contact support.');
     }

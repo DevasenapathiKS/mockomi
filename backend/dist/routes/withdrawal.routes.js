@@ -92,5 +92,23 @@ router.post('/webhook/payout', controllers_1.withdrawalController.handlePayoutWe
  *     security: [{ bearerAuth: [] }]
  */
 router.get('/admin/all', auth_1.authenticate, (0, auth_1.authorize)(types_1.UserRole.ADMIN), controllers_1.withdrawalController.getAllWithdrawals);
+/**
+ * @swagger
+ * /withdrawals/admin/:id/approve:
+ *   post:
+ *     tags: [Withdrawals]
+ *     summary: Approve withdrawal (Admin only) – credits amount to bank account
+ *     security: [{ bearerAuth: [] }]
+ */
+router.post('/admin/:id/approve', auth_1.authenticate, (0, auth_1.authorize)(types_1.UserRole.ADMIN), controllers_1.withdrawalController.approveWithdrawal);
+/**
+ * @swagger
+ * /withdrawals/admin/:id/reject:
+ *   post:
+ *     tags: [Withdrawals]
+ *     summary: Reject withdrawal request (Admin only)
+ *     security: [{ bearerAuth: [] }]
+ */
+router.post('/admin/:id/reject', auth_1.authenticate, (0, auth_1.authorize)(types_1.UserRole.ADMIN), controllers_1.withdrawalController.rejectWithdrawal);
 exports.default = router;
 //# sourceMappingURL=withdrawal.routes.js.map

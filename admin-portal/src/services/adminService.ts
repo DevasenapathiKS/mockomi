@@ -4,12 +4,14 @@ import {
   AdminUser,
   AdminInterviewer,
   AdminPayment,
+  AdminWithdrawal,
   Coupon,
   PaginatedResponse,
   UserRole,
   UserStatus,
   PaymentStatus,
   SystemHealth,
+  WithdrawalStatus,
 } from '@/types';
 
 export interface PaymentStats {
@@ -240,6 +242,62 @@ export const adminService = {
     try {
       const response = await api.get<{ success: boolean; data: SystemHealth }>(
         '/admin/health'
+      );
+      return response.data.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  },
+
+  // Withdrawals (admin)
+  getWithdrawals: async (
+    page = 1,
+    limit = 10,
+    status?: WithdrawalStatus
+  ): Promise<PaginatedResponse<AdminWithdrawal>> => {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      if (status) params.append('status', status);
+
+      const response = await api.get<{
+        success: boolean;
+        data: AdminWithdrawal[];
+        pagination: { page: number; limit: number; total: number; totalPages: number };
+      }>(`/withdrawals/admin/all?${params.toString()}`);
+      return {
+        data: response.data.data,
+        total: response.data.pagination.total,
+        totalPages: response.data.pagination.totalPages,
+        page: response.data.pagination.page,
+        limit: response.data.pagination.limit,
+      };
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  },
+
+  approveWithdrawal: async (withdrawalId: string): Promise<AdminWithdrawal> => {
+    try {
+      const response = await api.post<{ success: boolean; data: AdminWithdrawal }>(
+        `/withdrawals/admin/${withdrawalId}/approve`
+      );
+      return response.data.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  },
+
+  rejectWithdrawal: async (
+    withdrawalId: string,
+    reason?: string
+  ): Promise<AdminWithdrawal> => {
+    try {
+      const response = await api.post<{ success: boolean; data: AdminWithdrawal }>(
+        `/withdrawals/admin/${withdrawalId}/reject`,
+        reason ? { reason } : {}
       );
       return response.data.data;
     } catch (error) {

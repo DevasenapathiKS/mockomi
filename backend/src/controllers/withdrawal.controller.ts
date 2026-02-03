@@ -135,3 +135,37 @@ export const getAllWithdrawals = asyncHandler(async (req: AuthRequest, res: Resp
   });
 });
 
+/**
+ * Admin: Approve a pending withdrawal (credits amount to bank account).
+ */
+export const approveWithdrawal = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const withdrawal = await withdrawalService.approveWithdrawal(
+    req.params.id,
+    req.user!.id
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Withdrawal approved. Amount will be credited to the bank account.',
+    data: withdrawal,
+  });
+});
+
+/**
+ * Admin: Reject a pending withdrawal request.
+ */
+export const rejectWithdrawal = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { reason } = req.body || {};
+  const withdrawal = await withdrawalService.rejectWithdrawal(
+    req.params.id,
+    req.user!.id,
+    reason
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Withdrawal request rejected.',
+    data: withdrawal,
+  });
+});
+

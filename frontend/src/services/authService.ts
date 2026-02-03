@@ -114,4 +114,106 @@ export const authService = {
       throw new Error(handleApiError(error as Parameters<typeof handleApiError>[0]));
     }
   },
+
+  // OAuth Methods
+  // Initiate Google OAuth
+  initiateGoogleAuth: (isLinking = false): Window | null => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const url = `${backendUrl}/api/v1/oauth/google${isLinking ? '?link=true' : ''}`;
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    return window.open(
+      url,
+      'Google Login',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+  },
+
+  // Initiate GitHub OAuth
+  initiateGithubAuth: (isLinking = false): Window | null => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const url = `${backendUrl}/api/v1/oauth/github${isLinking ? '?link=true' : ''}`;
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    return window.open(
+      url,
+      'GitHub Login',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+  },
+
+  // Initiate LinkedIn OAuth
+  initiateLinkedInAuth: (isLinking = false): Window | null => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const url = `${backendUrl}/api/v1/oauth/linkedin${isLinking ? '?link=true' : ''}`;
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    return window.open(
+      url,
+      'LinkedIn Login',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+  },
+
+  // Wait for OAuth response via postMessage
+  waitForOAuthResponse: (): Promise<{ accessToken: string; refreshToken: string }> => {
+    return new Promise((resolve, reject) => {
+      const handleMessage = (event: MessageEvent) => {
+        // Verify origin for security
+        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const expectedOrigin = new URL(backendUrl).origin;
+        
+        if (event.origin !== expectedOrigin) {
+          return;
+        }
+
+        if (event.data.type === 'oauth-success') {
+          window.removeEventListener('message', handleMessage);
+          resolve({
+            accessToken: event.data.accessToken,
+            refreshToken: event.data.refreshToken,
+          });
+        } else if (event.data.type === 'oauth-error') {
+          window.removeEventListener('message', handleMessage);
+          reject(new Error(event.data.message || 'OAuth authentication failed'));
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        window.removeEventListener('message', handleMessage);
+        reject(new Error('OAuth authentication timeout'));
+      }, 5 * 60 * 1000);
+    });
+  },
+
+  // Get linked OAuth providers
+  getLinkedProviders: async (): Promise<string[]> => {
+    try {
+      const response = await api.get<ApiResponse<{ providers: string[] }>>('/oauth/linked-providers');
+      return response.data.data!.providers;
+    } catch (error) {
+      throw new Error(handleApiError(error as Parameters<typeof handleApiError>[0]));
+    }
+  },
+
+  // Unlink OAuth provider
+  unlinkProvider: async (provider: string): Promise<void> => {
+    try {
+      await api.delete(`/oauth/unlink/${provider}`);
+    } catch (error) {
+      throw new Error(handleApiError(error as Parameters<typeof handleApiError>[0]));
+    }
+  },
 };

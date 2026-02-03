@@ -57,7 +57,8 @@ export declare enum WithdrawalStatus {
     PROCESSING = "processing",
     COMPLETED = "completed",
     FAILED = "failed",
-    REVERSED = "reversed"
+    REVERSED = "reversed",
+    REJECTED = "rejected"
 }
 export declare enum WithdrawalMethod {
     BANK_TRANSFER = "bank_transfer",
@@ -110,9 +111,34 @@ export declare enum ExperienceLevel {
     DIRECTOR = "director",
     EXECUTIVE = "executive"
 }
+export interface IOAuthProvider {
+    id: string;
+    linkedAt: Date;
+}
+export interface IGoogleProvider extends IOAuthProvider {
+    email?: string;
+    refreshToken?: string;
+}
+export interface IGitHubProvider extends IOAuthProvider {
+    username?: string;
+    accessToken?: string;
+}
+export interface ILinkedInProvider extends IOAuthProvider {
+    accessToken?: string;
+}
+export interface ILocalProvider {
+    enabled: boolean;
+    createdAt: Date;
+}
+export interface IAuthProviders {
+    local?: ILocalProvider;
+    google?: IGoogleProvider;
+    github?: IGitHubProvider;
+    linkedin?: ILinkedInProvider;
+}
 export interface IBaseUser {
     email: string;
-    password: string;
+    password?: string;
     role: UserRole;
     status: UserStatus;
     firstName: string;
@@ -120,6 +146,7 @@ export interface IBaseUser {
     phone?: string;
     avatar?: string;
     isEmailVerified: boolean;
+    authProviders: IAuthProviders;
     lastLogin?: Date;
     refreshTokens: string[];
     failedLoginAttempts?: number;

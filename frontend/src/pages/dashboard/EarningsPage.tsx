@@ -124,7 +124,7 @@ const EarningsPage: React.FC = () => {
       }
     },
     onSuccess: () => {
-      toast.success('Withdrawal request submitted successfully!');
+      toast.success('Withdrawal request submitted. It will be processed after admin approval.');
       setWithdrawModal(false);
       setWithdrawAmount('');
       queryClient.invalidateQueries({ queryKey: ['withdrawal-stats'] });
@@ -151,6 +151,8 @@ const EarningsPage: React.FC = () => {
     ? earnings 
     : earnings.filter((e: Earning) => e.status === statusFilter);
 
+    console.log(filteredEarnings);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
@@ -169,11 +171,13 @@ const EarningsPage: React.FC = () => {
       case WithdrawalStatus.COMPLETED:
         return <Badge variant="success">Completed</Badge>;
       case WithdrawalStatus.PENDING:
-        return <Badge variant="warning">Pending</Badge>;
+        return <Badge variant="warning">Pending approval</Badge>;
       case WithdrawalStatus.PROCESSING:
         return <Badge variant="info">Processing</Badge>;
       case WithdrawalStatus.FAILED:
         return <Badge variant="danger">Failed</Badge>;
+      case WithdrawalStatus.REJECTED:
+        return <Badge variant="danger">Rejected</Badge>;
       case WithdrawalStatus.REVERSED:
         return <Badge variant="gray">Reversed</Badge>;
       default:

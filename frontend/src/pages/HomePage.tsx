@@ -38,7 +38,7 @@ const features = [
 // ];
 
 const benefits = [
-  '2 free mock interviews for every job seeker',
+  // '2 free mock interviews for every job seeker',
   'Video recording of interview sessions',
   'Detailed feedback and improvement tips',
   'Connect with industry experts',

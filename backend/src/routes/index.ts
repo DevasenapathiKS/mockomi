@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
+import oauthRoutes from './oauth.routes';
 import jobRoutes from './job.routes';
 import applicationRoutes from './application.routes';
 import interviewRoutes from './interview.routes';
@@ -16,8 +17,11 @@ const router = Router();
 // Health check routes (before other routes for quick access)
 router.use('/health', healthRoutes);
 
+// Authentication routes
+router.use('/auth', authRoutes); // Email/password authentication
+router.use('/oauth', oauthRoutes); // OAuth social login (Google, GitHub, LinkedIn)
+
 // API routes
-router.use('/auth', authRoutes);
 router.use('/jobs', jobRoutes);
 router.use('/applications', applicationRoutes);
 router.use('/interviews', interviewRoutes);

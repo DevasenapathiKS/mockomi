@@ -16,9 +16,53 @@ const userSchema = new Schema<IUserDocument>(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function(this: IUserDocument) {
+        // Password is required only if local auth is enabled
+        return !this.authProviders || !Object.keys(this.authProviders).some(
+          key => key !== 'local' && (this.authProviders as any)[key]
+        );
+      },
       minlength: [8, 'Password must be at least 8 characters'],
       select: false,
+    },
+    // OAuth Provider Tracking
+    authProviders: {
+      type: {
+        local: {
+          type: {
+            enabled: { type: Boolean, default: false },
+            createdAt: { type: Date, default: Date.now },
+          },
+          required: false,
+        },
+        google: {
+          type: {
+            id: { type: String, required: true },
+            email: String,
+            linkedAt: { type: Date, default: Date.now },
+            refreshToken: String,
+          },
+          required: false,
+        },
+        github: {
+          type: {
+            id: { type: String, required: true },
+            username: String,
+            linkedAt: { type: Date, default: Date.now },
+            accessToken: String,
+          },
+          required: false,
+        },
+        linkedin: {
+          type: {
+            id: { type: String, required: true },
+            linkedAt: { type: Date, default: Date.now },
+            accessToken: String,
+          },
+          required: false,
+        },
+      },
+      default: {},
     },
     role: {
       type: String,
@@ -94,10 +138,13 @@ const userSchema = new Schema<IUserDocument>(
 userSchema.index({ role: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ createdAt: -1 });
+userSchema.index({ 'authProviders.google.id': 1 }, { sparse: true });
+userSchema.index({ 'authProviders.github.id': 1 }, { sparse: true });
+userSchema.index({ 'authProviders.linkedin.id': 1 }, { sparse: true });
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return next();
   }
 

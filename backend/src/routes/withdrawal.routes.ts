@@ -130,5 +130,35 @@ router.get(
   withdrawalController.getAllWithdrawals
 );
 
+/**
+ * @swagger
+ * /withdrawals/admin/:id/approve:
+ *   post:
+ *     tags: [Withdrawals]
+ *     summary: Approve withdrawal (Admin only) – credits amount to bank account
+ *     security: [{ bearerAuth: [] }]
+ */
+router.post(
+  '/admin/:id/approve',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  withdrawalController.approveWithdrawal
+);
+
+/**
+ * @swagger
+ * /withdrawals/admin/:id/reject:
+ *   post:
+ *     tags: [Withdrawals]
+ *     summary: Reject withdrawal request (Admin only)
+ *     security: [{ bearerAuth: [] }]
+ */
+router.post(
+  '/admin/:id/reject',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  withdrawalController.rejectWithdrawal
+);
+
 export default router;
 

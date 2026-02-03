@@ -1,4 +1,5 @@
 export * as authController from './auth.controller';
+export * as oauthController from './oauth.controller';
 export * as jobController from './job.controller';
 export * as applicationController from './application.controller';
 export * as interviewController from './interview.controller';

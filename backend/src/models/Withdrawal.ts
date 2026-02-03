@@ -29,7 +29,7 @@ const withdrawalSchema = new Schema<IWithdrawalDocument>(
     },
     status: {
       type: String,
-      enum: Object.values(WithdrawalStatus),
+      enum: [...Object.values(WithdrawalStatus)],
       default: WithdrawalStatus.PENDING,
     },
     bankDetails: {

@@ -13,6 +13,7 @@ import AdminInterviewsPage from './pages/AdminInterviewsPage';
 import AdminPaymentsPage from './pages/AdminPaymentsPage';
 import AdminCouponsPage from './pages/AdminCouponsPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
+import AdminWithdrawalsPage from './pages/AdminWithdrawalsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -128,6 +129,14 @@ function App() {
             element={
               <PrivateRoute>
                 <AdminPaymentsPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/withdrawals"
+            element={
+              <PrivateRoute>
+                <AdminWithdrawalsPage />
               </PrivateRoute>
             }
           />

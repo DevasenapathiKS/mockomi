@@ -7,6 +7,7 @@ import {
   Briefcase,
   Video,
   CreditCard,
+  Wallet,
   Tag,
   Settings,
   Search,
@@ -34,6 +35,7 @@ const navigation: NavItem[] = [
   { name: 'Jobs', href: '/jobs', icon: Briefcase },
   { name: 'Interviews', href: '/interviews', icon: Video },
   { name: 'Payments', href: '/payments', icon: CreditCard },
+  { name: 'Withdrawals', href: '/withdrawals', icon: Wallet },
   { name: 'Coupons', href: '/coupons', icon: Tag },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

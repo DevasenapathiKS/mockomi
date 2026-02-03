@@ -9,6 +9,11 @@ import config from '../config';
 import logger from '../utils/logger';
 import notificationService from './notification.service';
 
+// Validate Razorpay credentials for withdrawal payouts
+if (!config.razorpay.keyId || !config.razorpay.keySecret) {
+  logger.error('Razorpay credentials are not configured. Withdrawal payout functionality will be unavailable.');
+}
+
 const razorpay = new Razorpay({
   key_id: config.razorpay.keyId,
   key_secret: config.razorpay.keySecret,
@@ -109,19 +114,99 @@ class WithdrawalService {
 
     const withdrawal = await Withdrawal.create(withdrawalData);
 
+    // Withdrawal stays PENDING until admin approves. No automatic payout.
+    await notificationService.createNotification({
+      userId,
+      type: 'withdrawal_requested',
+      title: 'Withdrawal Request Submitted',
+      message: `Your withdrawal of ₹${(withdrawal.amount / 100).toFixed(2)} has been submitted. It will be processed after admin approval.`,
+      data: { withdrawalId: withdrawal._id },
+    });
+
+    logger.info(`Withdrawal request created: ${withdrawal._id} for user ${userId} (pending admin approval)`);
+    return withdrawal;
+  }
+
+  /**
+   * Admin: Approve a pending withdrawal and credit amount to bank account (via Razorpay or manual).
+   */
+  async approveWithdrawal(withdrawalId: string, adminId: string): Promise<IWithdrawalDocument> {
+    const withdrawal = await Withdrawal.findById(withdrawalId);
+    if (!withdrawal) {
+      throw new AppError('Withdrawal not found', 404);
+    }
+    if (withdrawal.status !== WithdrawalStatus.PENDING) {
+      throw new AppError(
+        `Withdrawal cannot be approved. Current status: ${withdrawal.status}`,
+        400
+      );
+    }
+
+    const user = await User.findById(withdrawal.userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const transferDetails: BankTransferData | UpiTransferData =
+      withdrawal.method === WithdrawalMethod.BANK_TRANSFER && withdrawal.bankDetails
+        ? {
+            accountHolderName: withdrawal.bankDetails.accountHolderName,
+            accountNumber: withdrawal.bankDetails.accountNumber,
+            ifscCode: withdrawal.bankDetails.ifscCode,
+            bankName: withdrawal.bankDetails.bankName,
+          }
+        : withdrawal.upiId
+          ? { upiId: withdrawal.upiId }
+          : (() => {
+              throw new AppError('Missing bank or UPI details for this withdrawal', 400);
+            })();
+
     try {
-      // Process payout via Razorpay
       await this.processRazorpayPayout(withdrawal, user, transferDetails);
     } catch (error: any) {
-      // Update withdrawal status to failed
       withdrawal.status = WithdrawalStatus.FAILED;
       withdrawal.failureReason = error.message || 'Payout processing failed';
       await withdrawal.save();
-
-      logger.error(`Withdrawal failed for user ${userId}: ${error.message}`);
-      throw new AppError(error.message || 'Failed to process withdrawal', 400);
+      logger.error(`Withdrawal approval failed: ${withdrawalId} - ${error.message}`);
+      throw new AppError(error.message || 'Failed to process payout', 400);
     }
 
+    logger.info(`Withdrawal ${withdrawalId} approved by admin ${adminId}`);
+    return withdrawal;
+  }
+
+  /**
+   * Admin: Reject a pending withdrawal request.
+   */
+  async rejectWithdrawal(
+    withdrawalId: string,
+    adminId: string,
+    reason?: string
+  ): Promise<IWithdrawalDocument> {
+    const withdrawal = await Withdrawal.findById(withdrawalId);
+    if (!withdrawal) {
+      throw new AppError('Withdrawal not found', 404);
+    }
+    if (withdrawal.status !== WithdrawalStatus.PENDING) {
+      throw new AppError(
+        `Withdrawal cannot be rejected. Current status: ${withdrawal.status}`,
+        400
+      );
+    }
+
+    withdrawal.status = WithdrawalStatus.REJECTED;
+    withdrawal.failureReason = reason || 'Rejected by admin';
+    await withdrawal.save();
+
+    await notificationService.createNotification({
+      userId: withdrawal.userId.toString(),
+      type: 'withdrawal_rejected',
+      title: 'Withdrawal Request Rejected',
+      message: `Your withdrawal of ₹${(withdrawal.amount / 100).toFixed(2)} was rejected.${reason ? ` Reason: ${reason}` : ''}`,
+      data: { withdrawalId: withdrawal._id, reason: withdrawal.failureReason },
+    });
+
+    logger.info(`Withdrawal ${withdrawalId} rejected by admin ${adminId}`);
     return withdrawal;
   }
 

@@ -9,6 +9,7 @@ const LoginPage = React.lazy(() => import('@/pages/auth/LoginPage'));
 const RegisterPage = React.lazy(() => import('@/pages/auth/RegisterPage'));
 const ForgotPasswordPage = React.lazy(() => import('@/pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = React.lazy(() => import('@/pages/auth/ResetPasswordPage'));
+const OAuthCallbackPage = React.lazy(() => import('@/pages/auth/OAuthCallbackPage'));
 const DashboardPage = React.lazy(() => import('@/pages/dashboard/DashboardPage'));
 
 // Jobs Pages
@@ -71,6 +72,7 @@ const App: React.FC = () => {
         <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
         <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
         <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ResetPasswordPage />} />
+        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
         {/* Jobs public listing */}
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
