@@ -141,7 +141,7 @@ mockomi/
    ```
 
 4. **Access the application**
-   - Frontend: http://localhost:3000
+   - Frontend: https://mockomi.com
    - Backend API: http://localhost:5000
    - API Docs: http://localhost:5000/api-docs
 
@@ -152,7 +152,7 @@ mockomi/
 docker-compose -f docker-compose.dev.yml up
 
 # Access
-# Frontend: http://localhost:3000
+# Frontend: https://mockomi.com
 # Backend: http://localhost:5000
 # MongoDB Admin: http://localhost:8081
 ```

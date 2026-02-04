@@ -51,7 +51,7 @@ const config = {
         from: process.env.EMAIL_FROM || 'noreply@mockomi.com',
     },
     frontend: {
-        url: process.env.FRONTEND_URL || 'http://localhost:3000',
+        url: process.env.FRONTEND_URL || 'https://mockomi.com',
     },
     interview: {
         freeInterviews: parseInt(process.env.FREE_INTERVIEWS || '2', 10),

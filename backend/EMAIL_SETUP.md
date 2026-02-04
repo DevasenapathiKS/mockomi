@@ -19,7 +19,7 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-16-character-app-password
 EMAIL_FROM=your-email@gmail.com
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=https://mockomi.com
 ```
 
 ### Option 2: Other Email Providers
@@ -78,7 +78,7 @@ curl -X POST http://localhost:5000/api/auth/forgot-password \
 ### 3. Check your email
 - Look for an email from Mockomi
 - Click the reset password link
-- The link format: `http://localhost:3000/reset-password?token=...`
+- The link format: `https://mockomi.com/reset-password?token=...`
 
 ## Email Templates
 

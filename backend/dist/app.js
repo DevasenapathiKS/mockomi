@@ -39,7 +39,7 @@ app.use((0, cors_1.default)({
             return callback(null, true);
         const allowedOrigins = [
             config_1.default.frontend.url,
-            'http://localhost:3000',
+            'https://mockomi.com',
             'http://localhost:5173',
         ].filter(Boolean);
         if (allowedOrigins.includes(origin) || config_1.default.env === 'development') {

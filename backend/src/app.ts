@@ -41,7 +41,7 @@ app.use(
 
       const allowedOrigins = [
         config.frontend.url,
-        'http://localhost:3000',
+        'https://mockomi.com',
         'http://localhost:5173',
       ].filter(Boolean);
       

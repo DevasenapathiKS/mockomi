@@ -118,7 +118,7 @@ export const authService = {
   // OAuth Methods
   // Initiate Google OAuth
   initiateGoogleAuth: (isLinking = false): Window | null => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const backendUrl = import.meta.env.VITE_API_URL || 'https://mockomi.com';
     const url = `${backendUrl}/api/v1/oauth/google${isLinking ? '?link=true' : ''}`;
     const width = 500;
     const height = 600;
@@ -134,7 +134,7 @@ export const authService = {
 
   // Initiate GitHub OAuth
   initiateGithubAuth: (isLinking = false): Window | null => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const backendUrl = import.meta.env.VITE_API_URL || 'https://mockomi.com';
     const url = `${backendUrl}/api/v1/oauth/github${isLinking ? '?link=true' : ''}`;
     const width = 500;
     const height = 600;
@@ -150,7 +150,7 @@ export const authService = {
 
   // Initiate LinkedIn OAuth
   initiateLinkedInAuth: (isLinking = false): Window | null => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const backendUrl = import.meta.env.VITE_API_URL || 'https://mockomi.com';
     const url = `${backendUrl}/api/v1/oauth/linkedin${isLinking ? '?link=true' : ''}`;
     const width = 500;
     const height = 600;
@@ -169,7 +169,7 @@ export const authService = {
     return new Promise((resolve, reject) => {
       const handleMessage = (event: MessageEvent) => {
         // Verify origin for security
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const backendUrl = import.meta.env.VITE_API_URL || 'https://mockomi.com';
         const expectedOrigin = new URL(backendUrl).origin;
         
         if (event.origin !== expectedOrigin) {

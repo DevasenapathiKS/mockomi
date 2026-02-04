@@ -102,7 +102,7 @@ exports.forgotPassword = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             success: true,
             message: 'Email service not configured. Using development mode.',
             devMode: true,
-            resetUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${result.resetToken}`,
+            resetUrl: `${process.env.FRONTEND_URL || 'https://mockomi.com'}/reset-password?token=${result.resetToken}`,
         });
     }
     else {
