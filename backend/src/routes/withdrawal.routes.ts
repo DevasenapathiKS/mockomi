@@ -99,6 +99,21 @@ router.get(
   withdrawalController.getWithdrawalById
 );
 
+/**
+ * @swagger
+ * /withdrawals/{id}/cancel:
+ *   post:
+ *     tags: [Withdrawals]
+ *     summary: Cancel pending withdrawal request
+ *     security: [{ bearerAuth: [] }]
+ */
+router.post(
+  '/:id/cancel',
+  authenticate,
+  authorize(UserRole.INTERVIEWER),
+  withdrawalController.cancelWithdrawal
+);
+
 // ============ WEBHOOK ROUTE ============
 
 /**

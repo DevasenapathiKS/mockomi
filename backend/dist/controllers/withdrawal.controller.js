@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.rejectWithdrawal = exports.approveWithdrawal = exports.getAllWithdrawals = exports.handlePayoutWebhook = exports.getWithdrawalStats = exports.getWithdrawalById = exports.getMyWithdrawals = exports.createWithdrawal = void 0;
+exports.rejectWithdrawal = exports.approveWithdrawal = exports.getAllWithdrawals = exports.handlePayoutWebhook = exports.cancelWithdrawal = exports.getWithdrawalStats = exports.getWithdrawalById = exports.getMyWithdrawals = exports.createWithdrawal = void 0;
 const services_1 = require("../services");
 const types_1 = require("../types");
 const errorHandler_1 = require("../middlewares/errorHandler");
@@ -72,6 +72,17 @@ exports.getWithdrawalStats = (0, errorHandler_1.asyncHandler)(async (req, res) =
     res.status(200).json({
         success: true,
         data: stats,
+    });
+});
+/**
+ * Cancel own pending withdrawal
+ */
+exports.cancelWithdrawal = (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const withdrawal = await services_1.withdrawalService.cancelWithdrawal(req.params.id, req.user.id);
+    res.status(200).json({
+        success: true,
+        message: 'Withdrawal request cancelled successfully.',
+        data: withdrawal,
     });
 });
 /**

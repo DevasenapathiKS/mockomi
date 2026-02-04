@@ -57,7 +57,9 @@ class WithdrawalService {
             status: { $in: [types_1.WithdrawalStatus.PENDING, types_1.WithdrawalStatus.PROCESSING] },
         });
         if (pendingWithdrawal) {
-            throw new errors_1.AppError('You have a pending withdrawal request. Please wait for it to complete.', 400);
+            const createdAt = new Date(pendingWithdrawal.createdAt).toLocaleString('en-IN');
+            const withdrawalAmount = (pendingWithdrawal.amount / 100).toFixed(2);
+            throw new errors_1.AppError(`You have a ${pendingWithdrawal.status} withdrawal request of ₹${withdrawalAmount} created on ${createdAt}. Please wait for it to complete or contact admin if it's been more than 24 hours.`, 400);
         }
         // Create withdrawal record
         const withdrawalData = {
@@ -157,6 +159,35 @@ class WithdrawalService {
         return withdrawal;
     }
     /**
+     * User: Cancel own pending withdrawal request
+     */
+    async cancelWithdrawal(withdrawalId, userId) {
+        const withdrawal = await models_1.Withdrawal.findById(withdrawalId);
+        if (!withdrawal) {
+            throw new errors_1.AppError('Withdrawal not found', 404);
+        }
+        // Verify ownership
+        if (withdrawal.userId.toString() !== userId) {
+            throw new errors_1.AppError('Unauthorized to cancel this withdrawal', 403);
+        }
+        // Only allow cancellation of PENDING withdrawals
+        if (withdrawal.status !== types_1.WithdrawalStatus.PENDING) {
+            throw new errors_1.AppError(`Withdrawal cannot be cancelled. Current status: ${withdrawal.status}`, 400);
+        }
+        withdrawal.status = types_1.WithdrawalStatus.REJECTED;
+        withdrawal.failureReason = 'Cancelled by user';
+        await withdrawal.save();
+        await notification_service_1.default.createNotification({
+            userId: withdrawal.userId.toString(),
+            type: 'withdrawal_cancelled',
+            title: 'Withdrawal Request Cancelled',
+            message: `Your withdrawal of ₹${(withdrawal.amount / 100).toFixed(2)} has been cancelled.`,
+            data: { withdrawalId: withdrawal._id },
+        });
+        logger_1.default.info(`Withdrawal ${withdrawalId} cancelled by user ${userId}`);
+        return withdrawal;
+    }
+    /**
      * Process payout via Razorpay
      * NOTE: RazorpayX Payouts API requires a separate business account.
      * For testing, we simulate the payout by marking it as completed.
@@ -164,11 +195,18 @@ class WithdrawalService {
      */
     async processRazorpayPayout(withdrawal, user, transferDetails) {
         try {
-            // Check if we're in test/development mode or RazorpayX is not configured
-            const isTestMode = config_1.default.env !== 'production' || !config_1.default.razorpay.keyId.startsWith('rzp_live');
+            // Check if RazorpayX is properly configured
+            // For live payouts, you need RazorpayX account with proper credentials
+            const hasLiveKey = config_1.default.razorpay.keyId.startsWith('rzp_live');
+            const isRazorpayXEnabled = process.env.RAZORPAYX_ACCOUNT_NUMBER ? true : false;
+            // Use test mode if:
+            // 1. Using test keys (rzp_test_), OR
+            // 2. RazorpayX account is not configured
+            const isTestMode = !hasLiveKey || !isRazorpayXEnabled;
             if (isTestMode) {
                 // TESTING MODE: Simulate successful payout
                 logger_1.default.info(`[TEST MODE] Simulating payout for withdrawal: ${withdrawal._id}`);
+                logger_1.default.info(`Reason: ${!hasLiveKey ? 'Using test Razorpay keys' : 'RazorpayX account not configured'}`);
                 withdrawal.razorpayPayoutId = `test_payout_${Date.now()}`;
                 withdrawal.status = types_1.WithdrawalStatus.COMPLETED;
                 withdrawal.processedAt = new Date();
@@ -178,36 +216,46 @@ class WithdrawalService {
                     userId: withdrawal.userId.toString(),
                     type: 'withdrawal_success',
                     title: 'Withdrawal Successful',
-                    message: `Your withdrawal of ₹${(withdrawal.amount / 100).toFixed(2)} has been processed. [TEST MODE]`,
+                    message: `Your withdrawal of ₹${(withdrawal.amount / 100).toFixed(2)} has been processed. [TEST MODE - No actual transfer made]`,
                     data: { withdrawalId: withdrawal._id },
                 });
                 logger_1.default.info(`[TEST MODE] Payout simulated for withdrawal: ${withdrawal._id}`);
                 return;
             }
             // PRODUCTION MODE: Use RazorpayX APIs
+            logger_1.default.info(`[LIVE MODE] Initiating RazorpayX payout for withdrawal: ${withdrawal._id}`);
             // Step 1: Create or get contact
             const contact = await this.createRazorpayContact(user);
             withdrawal.razorpayContactId = contact.id;
+            await withdrawal.save();
+            logger_1.default.info(`Contact created/fetched: ${contact.id}`);
             // Step 2: Create fund account
             const fundAccount = await this.createRazorpayFundAccount(contact.id, withdrawal.method, transferDetails);
             withdrawal.razorpayFundAccountId = fundAccount.id;
+            await withdrawal.save();
+            logger_1.default.info(`Fund account created: ${fundAccount.id}`);
             // Step 3: Create payout
-            const payout = await this.createRazorpayPayoutRequest(fundAccount.id, withdrawal.amount, `Withdrawal ${withdrawal._id}`);
+            const payout = await this.createRazorpayPayoutRequest(fundAccount.id, withdrawal.amount, `Mockomi withdrawal ${withdrawal._id}`);
             withdrawal.razorpayPayoutId = payout.id;
             withdrawal.status = types_1.WithdrawalStatus.PROCESSING;
             await withdrawal.save();
-            logger_1.default.info(`Payout initiated: ${payout.id} for withdrawal: ${withdrawal._id}`);
+            logger_1.default.info(`Payout initiated: ${payout.id} for withdrawal: ${withdrawal._id}, Status: ${payout.status}`);
             // Send notification
             await notification_service_1.default.createNotification({
                 userId: withdrawal.userId.toString(),
                 type: 'withdrawal_processing',
                 title: 'Withdrawal Processing',
-                message: `Your withdrawal of ₹${(withdrawal.amount / 100).toFixed(2)} is being processed.`,
-                data: { withdrawalId: withdrawal._id },
+                message: `Your withdrawal of ₹${(withdrawal.amount / 100).toFixed(2)} is being processed via RazorpayX. Amount will be credited to your account shortly.`,
+                data: { withdrawalId: withdrawal._id, payoutId: payout.id },
             });
         }
         catch (error) {
-            logger_1.default.error(`Razorpay payout error: ${error.message}`);
+            logger_1.default.error(`Razorpay payout error for withdrawal ${withdrawal._id}:`, {
+                error: error.message,
+                description: error.error?.description,
+                code: error.error?.code,
+                field: error.error?.field,
+            });
             throw error;
         }
     }
@@ -216,8 +264,9 @@ class WithdrawalService {
      */
     async createRazorpayContact(user) {
         try {
+            logger_1.default.info(`Creating Razorpay contact for user: ${user._id}`);
             const contact = await razorpay.contacts.create({
-                name: `${user.firstName} ${user.lastName}`,
+                name: `${user.firstName} ${user.lastName}`.trim(),
                 email: user.email,
                 contact: user.phone || '',
                 type: 'employee',
@@ -226,18 +275,31 @@ class WithdrawalService {
                     userId: user._id.toString(),
                 },
             });
+            logger_1.default.info(`Contact created successfully: ${contact.id}`);
             return contact;
         }
         catch (error) {
             // If contact already exists, try to fetch it
-            if (error.error?.description?.includes('already exists')) {
-                const contacts = await razorpay.contacts.all({
-                    reference_id: user._id.toString(),
-                });
-                if (contacts.items && contacts.items.length > 0) {
-                    return contacts.items[0];
+            if (error.error?.description?.includes('already exists') ||
+                error.error?.description?.includes('duplicate')) {
+                logger_1.default.info(`Contact already exists for user ${user._id}, fetching existing contact`);
+                try {
+                    const contacts = await razorpay.contacts.all({
+                        reference_id: user._id.toString(),
+                    });
+                    if (contacts.items && contacts.items.length > 0) {
+                        logger_1.default.info(`Found existing contact: ${contacts.items[0].id}`);
+                        return contacts.items[0];
+                    }
+                }
+                catch (fetchError) {
+                    logger_1.default.error('Failed to fetch existing contact:', fetchError.message);
                 }
             }
+            logger_1.default.error('Failed to create Razorpay contact:', {
+                error: error.message,
+                description: error.error?.description,
+            });
             throw new errors_1.AppError(error.error?.description || error.message || 'Failed to create Razorpay contact', 400);
         }
     }
@@ -257,6 +319,7 @@ class WithdrawalService {
                     ifsc: bankData.ifscCode.toUpperCase(),
                     account_number: bankData.accountNumber,
                 };
+                logger_1.default.info(`Creating bank fund account for contact ${contactId}: ${bankData.bankName} - ${bankData.ifscCode}`);
             }
             else if (method === types_1.WithdrawalMethod.UPI) {
                 const upiData = transferDetails;
@@ -264,12 +327,31 @@ class WithdrawalService {
                 fundAccountData.vpa = {
                     address: upiData.upiId,
                 };
+                logger_1.default.info(`Creating UPI fund account for contact ${contactId}: ${upiData.upiId}`);
             }
             const fundAccount = await razorpay.fundAccount.create(fundAccountData);
+            logger_1.default.info(`Fund account created successfully: ${fundAccount.id}`);
             return fundAccount;
         }
         catch (error) {
-            throw new errors_1.AppError(error.error?.description || error.message || 'Failed to create fund account', 400);
+            logger_1.default.error('Failed to create fund account:', {
+                error: error.message,
+                description: error.error?.description,
+                code: error.error?.code,
+                field: error.error?.field,
+            });
+            // Provide user-friendly error messages
+            const errorMsg = error.error?.description || error.message;
+            if (errorMsg?.includes('ifsc')) {
+                throw new errors_1.AppError('Invalid IFSC code. Please check your bank details.', 400);
+            }
+            else if (errorMsg?.includes('account_number')) {
+                throw new errors_1.AppError('Invalid account number. Please check your bank details.', 400);
+            }
+            else if (errorMsg?.includes('vpa') || errorMsg?.includes('upi')) {
+                throw new errors_1.AppError('Invalid UPI ID. Please check your UPI details.', 400);
+            }
+            throw new errors_1.AppError(errorMsg || 'Failed to create fund account', 400);
         }
     }
     /**
@@ -277,21 +359,47 @@ class WithdrawalService {
      */
     async createRazorpayPayoutRequest(fundAccountId, amount, narration) {
         try {
-            const payout = await razorpay.payouts.create({
-                account_number: config_1.default.razorpay.keyId, // Your RazorpayX account number
+            // Get RazorpayX account number from environment
+            const accountNumber = process.env.RAZORPAYX_ACCOUNT_NUMBER;
+            if (!accountNumber) {
+                throw new errors_1.AppError('RazorpayX account number not configured. Please set RAZORPAYX_ACCOUNT_NUMBER in environment variables.', 500);
+            }
+            logger_1.default.info(`Creating payout: Amount=${amount / 100}, FundAccount=${fundAccountId}`);
+            const payoutData = {
+                account_number: accountNumber, // Your RazorpayX account number (not the key_id)
                 fund_account_id: fundAccountId,
                 amount: amount, // in paise
                 currency: 'INR',
                 mode: 'IMPS', // IMPS for instant transfer, NEFT/RTGS for others
                 purpose: 'payout',
                 queue_if_low_balance: false,
-                reference_id: `payout_${Date.now()}`,
+                reference_id: `mockomi_${Date.now()}`,
                 narration: narration.substring(0, 30), // Max 30 chars
-            });
+            };
+            const payout = await razorpay.payouts.create(payoutData);
+            logger_1.default.info(`Payout created successfully: ${payout.id}, Status: ${payout.status}`);
             return payout;
         }
         catch (error) {
-            throw new errors_1.AppError(error.error?.description || error.message || 'Failed to create payout', 400);
+            logger_1.default.error('Failed to create Razorpay payout:', {
+                error: error.message,
+                description: error.error?.description,
+                code: error.error?.code,
+                field: error.error?.field,
+                source: error.error?.source,
+            });
+            // Provide user-friendly error messages
+            const errorMsg = error.error?.description || error.message || 'Failed to create payout';
+            if (errorMsg.includes('account_number')) {
+                throw new errors_1.AppError('Invalid RazorpayX account configuration. Please contact support.', 500);
+            }
+            else if (errorMsg.includes('insufficient')) {
+                throw new errors_1.AppError('Insufficient balance in payout account. Please try again later.', 503);
+            }
+            else if (errorMsg.includes('fund_account')) {
+                throw new errors_1.AppError('Invalid bank account details. Please update your bank information.', 400);
+            }
+            throw new errors_1.AppError(errorMsg, 400);
         }
     }
     /**

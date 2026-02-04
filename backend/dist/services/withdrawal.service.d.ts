@@ -28,6 +28,10 @@ declare class WithdrawalService {
      */
     rejectWithdrawal(withdrawalId: string, adminId: string, reason?: string): Promise<IWithdrawalDocument>;
     /**
+     * User: Cancel own pending withdrawal request
+     */
+    cancelWithdrawal(withdrawalId: string, userId: string): Promise<IWithdrawalDocument>;
+    /**
      * Process payout via Razorpay
      * NOTE: RazorpayX Payouts API requires a separate business account.
      * For testing, we simulate the payout by marking it as completed.

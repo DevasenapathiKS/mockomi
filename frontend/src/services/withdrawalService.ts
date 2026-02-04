@@ -63,5 +63,14 @@ export const withdrawalService = {
       throw new Error(handleApiError(error as Parameters<typeof handleApiError>[0]));
     }
   },
-};
 
+  // Cancel pending withdrawal
+  cancelWithdrawal: async (id: string): Promise<Withdrawal> => {
+    try {
+      const response = await api.post<ApiResponse<Withdrawal>>(`/withdrawals/${id}/cancel`);
+      return response.data.data!;
+    } catch (error) {
+      throw new Error(handleApiError(error as Parameters<typeof handleApiError>[0]));
+    }
+  },
+};

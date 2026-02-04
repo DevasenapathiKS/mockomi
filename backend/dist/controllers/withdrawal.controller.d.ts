@@ -16,6 +16,10 @@ export declare const getWithdrawalById: (req: import("express").Request, res: Re
  */
 export declare const getWithdrawalStats: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
 /**
+ * Cancel own pending withdrawal
+ */
+export declare const cancelWithdrawal: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+/**
  * Handle Razorpay payout webhook
  */
 export declare const handlePayoutWebhook: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;

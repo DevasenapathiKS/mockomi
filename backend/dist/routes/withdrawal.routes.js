@@ -73,6 +73,15 @@ router.get('/stats', auth_1.authenticate, (0, auth_1.authorize)(types_1.UserRole
  *     security: [{ bearerAuth: [] }]
  */
 router.get('/:id', auth_1.authenticate, (0, auth_1.authorize)(types_1.UserRole.INTERVIEWER), controllers_1.withdrawalController.getWithdrawalById);
+/**
+ * @swagger
+ * /withdrawals/{id}/cancel:
+ *   post:
+ *     tags: [Withdrawals]
+ *     summary: Cancel pending withdrawal request
+ *     security: [{ bearerAuth: [] }]
+ */
+router.post('/:id/cancel', auth_1.authenticate, (0, auth_1.authorize)(types_1.UserRole.INTERVIEWER), controllers_1.withdrawalController.cancelWithdrawal);
 // ============ WEBHOOK ROUTE ============
 /**
  * @swagger
