@@ -85,6 +85,9 @@ const InterviewsPage: React.FC = () => {
         if (user?.firstName || user?.lastName) {
           url.searchParams.set('name', `${user?.firstName || ''} ${user?.lastName || ''}`.trim());
         }
+        if (data?._id && isInterviewer) {
+          url.searchParams.set('interviewId', data._id);
+        }
         if (isInterviewer) {
           url.searchParams.set('recording', 'true');
         }
@@ -365,6 +368,7 @@ const InterviewsPage: React.FC = () => {
                               }
                               if (isInterviewer) {
                                 url.searchParams.set('recording', 'true');
+                                url.searchParams.set('interviewId', interview._id);
                               }
                               window.open(url.toString(), '_blank');
                             }}

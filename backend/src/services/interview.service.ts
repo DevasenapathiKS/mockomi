@@ -1,11 +1,10 @@
-import { Interview, JobSeekerProfile, InterviewerProfile, Payment, Notification } from '../models';
+import { Interview, JobSeekerProfile, InterviewerProfile, Payment } from '../models';
 import { IInterviewDocument } from '../models/Interview';
 import { InterviewStatus, PaymentStatus, IInterviewFeedback, PaginationQuery, PaginationInfo } from '../types';
 import { AppError } from '../utils/errors';
 import config from '../config';
-import redis from '../config/redis';
 import logger from '../utils/logger';
-import { Types, ClientSession } from 'mongoose';
+import { Types } from 'mongoose';
 import mongoose from 'mongoose';
 // import paymentService from './payment.service';
 import s3Service from './s3.service';
@@ -240,7 +239,6 @@ class InterviewService {
     const matchInterview: any = { interviewerId: new Types.ObjectId(interviewerId) };
 
     const now = new Date();
-    const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const startOfWeek = (d: Date) => {
       const day = d.getDay();
       const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -654,7 +652,7 @@ class InterviewService {
     return signedUrl;
   }
 
-  async checkPaymentRequired(jobSeekerId: string): Promise<{
+  async checkPaymentRequired(_jobSeekerId: string): Promise<{
     required: boolean;
     pricePerInterview: number;
   }> {
@@ -668,7 +666,7 @@ class InterviewService {
 
   async getAvailableInterviewers(
     expertise?: string[],
-    date?: Date
+    _date?: Date
   ): Promise<any[]> {
     const query: any = { isApproved: true };
 

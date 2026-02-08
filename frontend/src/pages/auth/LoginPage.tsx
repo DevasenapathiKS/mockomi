@@ -9,8 +9,8 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { SocialLoginButton } from '@/components/auth/SocialLoginButton';
-import { toast } from 'react-hot-toast';
+// import { SocialLoginButton } from '@/components/auth/SocialLoginButton';
+// import { toast } from 'react-hot-toast';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -124,7 +124,7 @@ const LoginPage: React.FC = () => {
             </Button>
           </form>
 
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200" />
@@ -163,9 +163,9 @@ const LoginPage: React.FC = () => {
                 }}
               />
             </div>
-          </div>
+          </div> */}
 
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200" />
@@ -180,7 +180,7 @@ const LoginPage: React.FC = () => {
               <p><strong>Employer:</strong> employer@company.com / demo123</p>
               <p><strong>Interviewer:</strong> interviewer@demo.com / demo123</p>
             </div>
-          </div>
+          </div> */}
         </Card>
       </div>
     </div>

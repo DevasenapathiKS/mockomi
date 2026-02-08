@@ -17,8 +17,8 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { clsx } from 'clsx';
-import { SocialLoginButton } from '@/components/auth/SocialLoginButton';
-import { toast } from 'react-hot-toast';
+// import { SocialLoginButton } from '@/components/auth/SocialLoginButton';
+// import { toast } from 'react-hot-toast';
 
 const registerSchema = z
   .object({
@@ -278,7 +278,7 @@ const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-6 space-y-3">
+              {/* <div className="mt-6 space-y-3">
                 <SocialLoginButton
                   provider="google"
                   onSuccess={() => {
@@ -306,7 +306,7 @@ const RegisterPage: React.FC = () => {
                     toast.error(error);
                   }}
                 />
-              </div>
+              </div> */}
             </div>
           </form>
         </Card>
