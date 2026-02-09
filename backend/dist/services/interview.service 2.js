@@ -26,9 +26,9 @@ class InterviewService {
         if (payment.status !== types_1.PaymentStatus.COMPLETED) {
             throw new errors_1.AppError('Payment not completed', 400);
         }
-        if (payment.amount < config_1.default.interview.pricePaise) {
-            throw new errors_1.AppError('Payment amount is insufficient', 400);
-        }
+        // if (payment.amount < config.interview.pricePaise) {
+        //   throw new AppError('Payment amount is insufficient', 400);
+        // }
         return payment;
     }
     async scheduleInterview(data) {

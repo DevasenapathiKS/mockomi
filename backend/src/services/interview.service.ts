@@ -35,9 +35,9 @@ class InterviewService {
       throw new AppError('Payment not completed', 400);
     }
 
-    if (payment.amount < config.interview.pricePaise) {
-      throw new AppError('Payment amount is insufficient', 400);
-    }
+    // if (payment.amount < config.interview.pricePaise) {
+    //   throw new AppError('Payment amount is insufficient', 400);
+    // }
 
     return payment;
   }

@@ -26,9 +26,9 @@ class InterviewService {
         if (payment.status !== types_1.PaymentStatus.COMPLETED) {
             throw new errors_1.AppError('Payment not completed', 400);
         }
-        if (payment.amount < config_1.default.interview.pricePaise) {
-            throw new errors_1.AppError('Payment amount is insufficient', 400);
-        }
+        // if (payment.amount < config.interview.pricePaise) {
+        //   throw new AppError('Payment amount is insufficient', 400);
+        // }
         return payment;
     }
     async scheduleInterview(data) {
@@ -171,7 +171,6 @@ class InterviewService {
     async getInterviewerEarnings(interviewerId, period) {
         const matchInterview = { interviewerId: new mongoose_1.Types.ObjectId(interviewerId) };
         const now = new Date();
-        const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
         const startOfWeek = (d) => {
             const day = d.getDay();
             const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -484,7 +483,7 @@ class InterviewService {
         const signedUrl = await s3_service_1.default.getSignedUrl(interview.videoRecording.s3Key, config_1.default.aws.s3VideoBucket, 3600);
         return signedUrl;
     }
-    async checkPaymentRequired(jobSeekerId) {
+    async checkPaymentRequired(_jobSeekerId) {
         // Payment is always required unless a valid coupon is used
         // Coupon validation happens during interview creation
         return {
@@ -492,7 +491,7 @@ class InterviewService {
             pricePerInterview: config_1.default.interview.pricePaise / 100, // Convert to rupees
         };
     }
-    async getAvailableInterviewers(expertise, date) {
+    async getAvailableInterviewers(expertise, _date) {
         const query = { isApproved: true };
         if (expertise && expertise.length > 0) {
             query.expertise = { $in: expertise };

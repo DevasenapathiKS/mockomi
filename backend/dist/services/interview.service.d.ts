@@ -45,11 +45,11 @@ declare class InterviewService {
     submitFeedback(interviewId: string, interviewerId: string, feedback: Omit<IInterviewFeedback, 'submittedAt'>): Promise<IInterviewDocument>;
     uploadRecording(interviewId: string, interviewerId: string, file: Buffer, fileName: string, mimeType: string): Promise<IInterviewDocument>;
     getRecordingUrl(interviewId: string, userId: string): Promise<string>;
-    checkPaymentRequired(jobSeekerId: string): Promise<{
+    checkPaymentRequired(_jobSeekerId: string): Promise<{
         required: boolean;
         pricePerInterview: number;
     }>;
-    getAvailableInterviewers(expertise?: string[], date?: Date): Promise<any[]>;
+    getAvailableInterviewers(expertise?: string[], _date?: Date): Promise<any[]>;
     /**
      * Job seeker creates an interview request with required skills only.
      * No interviewer or time is selected at this stage.
