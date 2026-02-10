@@ -312,15 +312,26 @@ class InterviewService {
     const earnings: any[] = [];
 
     for (const p of payments) {
-      if (p.status === PaymentStatus.COMPLETED) {
+      const feedbackSubmitted = !!p.interview?.feedback?.submittedAt;
+      if (p.status === PaymentStatus.COMPLETED && feedbackSubmitted) {
         paidAmount += p.amount;
         totalEarnings += p.amount;
+      } else if (p.status === PaymentStatus.COMPLETED && !feedbackSubmitted) {
+        pendingAmount += p.amount;
       } else if (p.status === PaymentStatus.PENDING || p.status === PaymentStatus.PROCESSING) {
         pendingAmount += p.amount;
       }
 
       // Use candidateName from aggregation or fallback
       const candidateName = p.candidateName?.trim() || 'Candidate';
+
+      const displayStatus = p.status === PaymentStatus.COMPLETED && feedbackSubmitted
+        ? 'paid'
+        : p.status === PaymentStatus.COMPLETED
+          ? 'pending'
+          : p.status === PaymentStatus.PENDING
+            ? 'pending'
+            : 'processing';
 
       earnings.push({
         id: p._id.toString(),
@@ -329,7 +340,7 @@ class InterviewService {
         date: p.interview.scheduledAt ? p.interview.scheduledAt.toISOString() : p.createdAt.toISOString(),
         duration: p.interview.duration || 60,
         amount: Math.round(p.amount / 100),
-        status: p.status === PaymentStatus.COMPLETED ? 'paid' : p.status === PaymentStatus.PENDING ? 'pending' : 'processing',
+        status: displayStatus,
         type: 'mock',
       });
     }
@@ -353,14 +364,31 @@ class InterviewService {
     }
 
     try {
+      console.log(`${config.vc.baseUrl.replace(/\/$/, '')}/meetings`);
       const response = await fetch(`${config.vc.baseUrl.replace(/\/$/, '')}/meetings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          createdBy: creatorId,
           title: `Interview ${interview._id}`,
+          scheduledAt: (interview.scheduledAt || new Date()).toISOString(),
+          durationMinutes: interview.duration || 60,
+          settings: {
+            allowAnonymous: true,
+            waitingRoomEnabled: false,
+            maxParticipants: 10,
+          },
+          metadata: {
+            project: 'alpha',
+            interviewId: interview._id,
+            createdBy: creatorId,
+          },
+          integrations: {
+            source: 'api',
+          },
         }),
       });
+
+      console.log('VC service response status:', response.status);
 
       if (!response.ok) {
         throw new Error(`VC service responded ${response.status}`);
@@ -422,45 +450,7 @@ class InterviewService {
     interview.status = InterviewStatus.COMPLETED;
     await interview.save();
 
-    // Get current interviewer profile to check completed interviews count
-    const interviewerProfile = await InterviewerProfile.findOne({ userId: interviewerId });
-    if (!interviewerProfile) {
-      throw new AppError('Interviewer profile not found', 404);
-    }
-
-    const currentCompletedCount = interviewerProfile.interviewsCompleted || 0;
-    const isFirstInterview = currentCompletedCount === 0;
-
-    // Update interviewer earnings only from second interview onwards
-    // First interview is free (no earnings)
-    if (!isFirstInterview && interview.payment) {
-      const payment = await Payment.findById(interview.payment);
-      if (payment && payment.status === PaymentStatus.COMPLETED) {
-        // Payment amount is in paise, convert to rupees for earnings
-        const earningsAmount = payment.amount / 100;
-        
-        await InterviewerProfile.findOneAndUpdate(
-          { userId: interviewerId },
-          { $inc: { earnings: earningsAmount } }
-        );
-        
-        logger.info(`Earnings updated for interviewer ${interviewerId}: +₹${earningsAmount} (from interview ${interviewId})`);
-      }
-    } else if (isFirstInterview) {
-      logger.info(`First interview completed for interviewer ${interviewerId} - no earnings (free interview)`);
-    }
-
-    // Always increment completed interviews count (for tracking)
-    await InterviewerProfile.findOneAndUpdate(
-      { userId: interviewerId },
-      { $inc: { interviewsCompleted: 1 } }
-    );
-
-    // Update job seeker stats
-    await JobSeekerProfile.findOneAndUpdate(
-      { userId: interview.jobSeekerId },
-      { $inc: { 'interviewStats.totalInterviews': 1 } }
-    );
+    // Earnings and counters are updated after feedback submission
 
     // Send notification
     await notificationService.createNotification({
@@ -539,6 +529,45 @@ class InterviewService {
     }
 
     await interview.save();
+
+    // Update earnings only after feedback is submitted
+    const interviewerProfile = await InterviewerProfile.findOne({ userId: interviewerId });
+    if (!interviewerProfile) {
+      throw new AppError('Interviewer profile not found', 404);
+    }
+
+    const currentCompletedCount = interviewerProfile.interviewsCompleted || 0;
+    const isFirstInterview = currentCompletedCount === 0;
+
+    if (interview.payment && !interview.earningsCredited) {
+      const payment = await Payment.findById(interview.payment);
+      if (payment && payment.status === PaymentStatus.COMPLETED) {
+        if (!isFirstInterview) {
+          const earningsAmount = payment.amount / 100;
+          await InterviewerProfile.findOneAndUpdate(
+            { userId: interviewerId },
+            { $inc: { earnings: earningsAmount } }
+          );
+          logger.info(`Earnings updated for interviewer ${interviewerId}: +₹${earningsAmount} (from interview ${interviewId})`);
+        } else {
+          logger.info(`First interview completed for interviewer ${interviewerId} - no earnings (free interview)`);
+        }
+        interview.earningsCredited = true;
+        await interview.save();
+      }
+    }
+
+    // Always increment completed interviews count (for tracking)
+    await InterviewerProfile.findOneAndUpdate(
+      { userId: interviewerId },
+      { $inc: { interviewsCompleted: 1 } }
+    );
+
+    // Update job seeker stats
+    await JobSeekerProfile.findOneAndUpdate(
+      { userId: interview.jobSeekerId },
+      { $inc: { 'interviewStats.totalInterviews': 1 } }
+    );
 
     // Update job seeker's average rating
     const jobSeekerInterviews = await Interview.find({

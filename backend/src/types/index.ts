@@ -449,6 +449,7 @@ export interface IInterview {
   };
   feedback?: IInterviewFeedback;
   payment?: Types.ObjectId;
+  earningsCredited?: boolean;
   isPaid: boolean;
   createdAt: Date;
   updatedAt: Date;

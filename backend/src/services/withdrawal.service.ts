@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { Withdrawal, InterviewerProfile, User, Payment, Interview } from '../models';
 import { IWithdrawalDocument } from '../models/Withdrawal';
-import { WithdrawalStatus, WithdrawalMethod, PaginationQuery, PaginationInfo, PaymentStatus } from '../types';
+import { WithdrawalStatus, WithdrawalMethod, PaginationQuery, PaginationInfo, PaymentStatus, InterviewStatus } from '../types';
 import { AppError } from '../utils/errors';
 import config from '../config';
 import logger from '../utils/logger';
@@ -707,6 +707,8 @@ class WithdrawalService {
         $match: {
           'interview.interviewerId': userObjectId,
           status: PaymentStatus.COMPLETED,
+          'interview.status': InterviewStatus.COMPLETED,
+          'interview.feedback': { $exists: true },
         },
       },
       {

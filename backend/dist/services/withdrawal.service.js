@@ -545,6 +545,8 @@ class WithdrawalService {
                 $match: {
                     'interview.interviewerId': userObjectId,
                     status: types_1.PaymentStatus.COMPLETED,
+                    'interview.status': types_1.InterviewStatus.COMPLETED,
+                    'interview.feedback': { $exists: true },
                 },
             },
             {

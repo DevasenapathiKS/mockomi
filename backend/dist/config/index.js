@@ -5,7 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
-// Load environment variables
+// Load environment variables based on NODE_ENV
+const envName = process.env.NODE_ENV || 'development';
+dotenv_1.default.config({ path: path_1.default.join(__dirname, `../../.env.${envName}`) });
+// Fallback to .env for backward compatibility
 dotenv_1.default.config({ path: path_1.default.join(__dirname, '../../.env') });
 const config = {
     env: process.env.NODE_ENV || 'development',
@@ -69,7 +72,7 @@ const config = {
         allowedFileTypes: (process.env.ALLOWED_FILE_TYPES || 'pdf,doc,docx,jpg,jpeg,png').split(','),
     },
     vc: {
-        baseUrl: process.env.VC_BASE_URL || 'https://vc.mockomi.com/api',
+        baseUrl: 'http://localhost:3000/api',
     },
 };
 // Validate required environment variables in production

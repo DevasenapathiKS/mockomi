@@ -1,7 +1,10 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables
+// Load environment variables based on NODE_ENV
+const envName = process.env.NODE_ENV || 'development';
+dotenv.config({ path: path.join(__dirname, `../../.env.${envName}`) });
+// Fallback to .env for backward compatibility
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 interface Config {
@@ -144,7 +147,7 @@ const config: Config = {
   },
 
   vc: {
-    baseUrl: process.env.VC_BASE_URL || 'https://vc.mockomi.com/api',
+    baseUrl: 'http://localhost:3000/api',
   },
 };
 

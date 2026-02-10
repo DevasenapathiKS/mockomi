@@ -147,6 +147,10 @@ const interviewSchema = new Schema<IInterviewDocument>(
       type: Schema.Types.ObjectId,
       ref: 'Payment',
     },
+    earningsCredited: {
+      type: Boolean,
+      default: false,
+    },
     isPaid: {
       type: Boolean,
       default: false,
