@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.router = void 0;
+const express_1 = require("express");
+const authMiddleware_1 = require("../../core/authMiddleware");
+const SessionController_1 = require("../../modules/session/controllers/SessionController");
+const router = (0, express_1.Router)();
+exports.router = router;
+const controller = new SessionController_1.SessionController();
+router.post('/sessions/:id/start', authMiddleware_1.authenticate, controller.start);
+router.post('/sessions/:id/submit-score', authMiddleware_1.authenticate, controller.submitScore);
+router.post('/sessions/:id/reschedule', authMiddleware_1.authenticate, controller.reschedule);
+router.post('/sessions/:id/rate', authMiddleware_1.authenticate, controller.rate);
+router.post('/sessions/:id/join-token', authMiddleware_1.authenticate, controller.joinToken);
