@@ -6,6 +6,21 @@ const error_1 = require("../../../core/error");
 const response_1 = require("../../../core/response");
 class AvailabilityController {
     constructor() {
+        this.getMySlots = async (req, res, next) => {
+            try {
+                if (!req.user) {
+                    throw new error_1.AppError('Unauthorized', 401);
+                }
+                if (req.user.role !== 'interviewer') {
+                    throw new error_1.AppError('Forbidden', 403);
+                }
+                const items = await this.availabilityService.getInterviewerSlots(req.user.userId);
+                (0, response_1.sendSuccess)(res, { items });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
         this.createSlot = async (req, res, next) => {
             try {
                 if (!req.user) {
@@ -14,9 +29,25 @@ class AvailabilityController {
                 if (req.user.role !== 'interviewer') {
                     throw new error_1.AppError('Forbidden', 403);
                 }
-                const { roleProfileId, startTime } = req.body;
-                const startDate = new Date(startTime);
-                const slot = await this.availabilityService.createSlot(req.user.userId, roleProfileId, startDate);
+                const body = (req.body ?? {});
+                const roleProfileId = typeof body.roleProfileId === 'string' && body.roleProfileId.trim().length > 0
+                    ? body.roleProfileId
+                    : null;
+                const startTimeStr = typeof body.startTime === 'string' && body.startTime.trim().length > 0
+                    ? body.startTime
+                    : typeof body.date === 'string' &&
+                        body.date.trim().length > 0 &&
+                        typeof body.time === 'string' &&
+                        body.time.trim().length > 0
+                        ? `${body.date}T${body.time}`
+                        : '';
+                const startDate = new Date(startTimeStr);
+                const price = typeof body.price === 'number'
+                    ? body.price
+                    : typeof body.price === 'string'
+                        ? Number(body.price)
+                        : undefined;
+                const slot = await this.availabilityService.createSlot(req.user.userId, roleProfileId, startDate, price);
                 (0, response_1.sendSuccess)(res, slot);
             }
             catch (error) {

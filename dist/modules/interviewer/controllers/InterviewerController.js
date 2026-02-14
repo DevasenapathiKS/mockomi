@@ -8,6 +8,36 @@ const error_1 = require("../../../core/error");
 const response_1 = require("../../../core/response");
 class InterviewerController {
     constructor() {
+        this.getMyProfile = async (req, res, next) => {
+            try {
+                if (!req.user) {
+                    throw new error_1.AppError('Unauthorized', 401);
+                }
+                if (req.user.role !== 'interviewer') {
+                    throw new error_1.AppError('Forbidden', 403);
+                }
+                const profile = await InterviewerProfile_1.InterviewerProfile.findOne({
+                    userId: new mongoose_1.Types.ObjectId(req.user.userId),
+                    isActive: true,
+                })
+                    .select('totalInterviews earningsTotal ratingAverage totalRatings')
+                    .lean()
+                    .exec();
+                if (!profile) {
+                    throw new error_1.AppError('Interviewer profile not found', 404);
+                }
+                (0, response_1.sendSuccess)(res, {
+                    totalInterviews: Number(profile.totalInterviews ?? 0),
+                    earningsTotal: Number(profile.earningsTotal ?? 0),
+                    ratingAverage: Number(profile.ratingAverage ?? 0),
+                    totalRatings: Number(profile.totalRatings ?? 0),
+                    currency: 'INR',
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
         this.getPublicList = async (req, res, next) => {
             try {
                 const pageRaw = req.query.page;
@@ -53,7 +83,8 @@ class InterviewerController {
                 if (!req.user) {
                     throw new error_1.AppError('Unauthorized', 401);
                 }
-                if (req.user.role !== 'interviewer') {
+                // Candidates can apply to become interviewers; verification is handled by admin.
+                if (req.user.role !== 'candidate') {
                     throw new error_1.AppError('Forbidden', 403);
                 }
                 const existing = await InterviewerProfile_1.InterviewerProfile.findOne({

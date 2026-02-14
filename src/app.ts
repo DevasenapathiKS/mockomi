@@ -20,6 +20,7 @@ import { router as bookingRoutes } from "./api/routes/bookingRoutes";
 import { router as sessionRoutes } from "./api/routes/sessionRoutes";
 import { router as adminRoutes } from "./api/routes/adminRoutes";
 import { router as paymentRoutes } from "./api/routes/paymentRoutes";
+import { router as candidateRoutes } from "./api/routes/candidateRoutes";
 
 
 
@@ -58,6 +59,7 @@ app.use('/api', apiLimiter, bookingRoutes);
 app.use('/api', apiLimiter, sessionRoutes);
 app.use('/api', apiLimiter, adminRoutes);
 app.use('/api', apiLimiter, paymentRoutes);
+app.use('/api', apiLimiter, candidateRoutes);
 
 // Error handler must be registered last.
 app.use(errorMiddleware);

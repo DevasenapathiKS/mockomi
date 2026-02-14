@@ -24,8 +24,6 @@ export class InterviewController {
         throw new AppError('Unauthorized', 401);
       }
 
-      const candidateId = req.user.userId;
-
       const pageRaw = req.query.page;
       const limitRaw = req.query.limit;
 
@@ -51,11 +49,14 @@ export class InterviewController {
         throw new AppError('Invalid limit', 400);
       }
 
-      const result = await this.interviewService.getCandidateSessionsList(
-        candidateId,
-        page,
-        limit,
-      );
+      const result =
+        req.user.role === 'candidate'
+          ? await this.interviewService.getCandidateSessionsList(req.user.userId, page, limit)
+          : req.user.role === 'interviewer'
+            ? await this.interviewService.getInterviewerSessionsList(req.user.userId, page, limit)
+            : (() => {
+                throw new AppError('Forbidden', 403);
+              })();
 
       sendSuccess(res, result);
     } catch (error: unknown) {

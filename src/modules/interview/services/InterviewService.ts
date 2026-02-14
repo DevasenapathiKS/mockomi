@@ -7,6 +7,7 @@ import { RoleProfile } from '../../scoring/models/RoleProfile';
 import { ScoringModel } from '../../scoring/models/ScoringModel';
 import { ScoringService, type DifficultyLevel } from '../../scoring/services/ScoringService';
 import { ProgressService } from "../../progress/services/ProgressService";
+import { User } from '../../auth/models/User';
 
 import { AppError } from '../../../core/error';
 import { config } from '../../../config/env';
@@ -456,6 +457,101 @@ export class InterviewService {
         level: item.level as DifficultyLevel,
         createdAt: item.createdAt as Date,
       })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  public async getInterviewerSessionsList(
+    interviewerId: string,
+    page: number,
+    limit: number,
+  ): Promise<{
+    items: Array<{
+      id: string;
+      status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+      scheduledAt: Date | null;
+      candidateId: string;
+      candidate: { id: string; email: string } | null;
+      overallScore: number;
+      readinessScore: number;
+      readinessStatus: 'ready' | 'not_ready' | null;
+      readinessGap: number;
+      performanceTier: PerformanceTier;
+      level: DifficultyLevel;
+      createdAt: Date;
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    if (!Types.ObjectId.isValid(interviewerId)) {
+      throw new AppError('Unauthorized', 401);
+    }
+
+    const skip = (page - 1) * limit;
+    const filter = { interviewerId: new Types.ObjectId(interviewerId) };
+
+    const [items, total] = await Promise.all([
+      InterviewSession.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .select(
+          '_id status scheduledAt candidateId overallScore readinessScore readinessStatus readinessGap level createdAt',
+        )
+        .lean()
+        .exec(),
+      InterviewSession.countDocuments(filter).exec(),
+    ]);
+
+    const candidateIds = Array.from(
+      new Set(
+        items
+          .map((i) => (typeof i.candidateId === 'string' ? i.candidateId : ''))
+          .filter((id) => Types.ObjectId.isValid(id)),
+      ),
+    );
+
+    const candidates = candidateIds.length
+      ? await User.find({ _id: { $in: candidateIds.map((id) => new Types.ObjectId(id)) } })
+          .select('_id email')
+          .lean()
+          .exec()
+      : [];
+
+    const candidateById = new Map<string, { id: string; email: string }>(
+      candidates.map((c) => [String(c._id), { id: String(c._id), email: String((c as any).email ?? '') }]),
+    );
+
+    return {
+      items: items.map((item: any) => {
+        const candidateId = String(item.candidateId ?? '');
+        const candidate =
+          Types.ObjectId.isValid(candidateId) ? (candidateById.get(candidateId) ?? null) : null;
+
+        return {
+          id: String(item._id),
+          status: item.status as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
+          scheduledAt: (item.scheduledAt as Date | undefined) ?? null,
+          candidateId,
+          candidate,
+          overallScore: Number(item.overallScore ?? 0),
+          readinessScore: Number(item.readinessScore ?? 0),
+          readinessStatus: (item.readinessStatus ?? null) as 'ready' | 'not_ready' | null,
+          readinessGap: Number(item.readinessGap ?? 0),
+          performanceTier: computePerformanceTier(Number(item.overallScore ?? 0)),
+          level: item.level as DifficultyLevel,
+          createdAt: item.createdAt as Date,
+        };
+      }),
       pagination: {
         page,
         limit,

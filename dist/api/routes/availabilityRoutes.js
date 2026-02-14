@@ -8,5 +8,6 @@ const router = (0, express_1.Router)();
 exports.router = router;
 const controller = new AvailabilityController_1.AvailabilityController();
 router.post('/availability', authMiddleware_1.authenticate, controller.createSlot);
+router.get('/interviewer/slots', authMiddleware_1.authenticate, controller.getMySlots);
 // Public interviewer slot discovery
 router.get('/interviewers/:id/slots', controller.getPublicSlots);

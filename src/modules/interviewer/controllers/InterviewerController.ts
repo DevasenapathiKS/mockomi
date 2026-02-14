@@ -13,6 +13,44 @@ export class InterviewerController {
     this.interviewerService = new InterviewerService();
   }
 
+  public getMyProfile = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new AppError('Unauthorized', 401);
+      }
+
+      if (req.user.role !== 'interviewer') {
+        throw new AppError('Forbidden', 403);
+      }
+
+      const profile = await InterviewerProfile.findOne({
+        userId: new Types.ObjectId(req.user.userId),
+        isActive: true,
+      })
+        .select('totalInterviews earningsTotal ratingAverage totalRatings')
+        .lean()
+        .exec();
+
+      if (!profile) {
+        throw new AppError('Interviewer profile not found', 404);
+      }
+
+      sendSuccess(res, {
+        totalInterviews: Number(profile.totalInterviews ?? 0),
+        earningsTotal: Number(profile.earningsTotal ?? 0),
+        ratingAverage: Number(profile.ratingAverage ?? 0),
+        totalRatings: Number(profile.totalRatings ?? 0),
+        currency: 'INR',
+      });
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
   public getPublicList = async (
     req: Request,
     res: Response,
@@ -78,7 +116,8 @@ export class InterviewerController {
         throw new AppError('Unauthorized', 401);
       }
 
-      if (req.user.role !== 'interviewer') {
+      // Candidates can apply to become interviewers; verification is handled by admin.
+      if (req.user.role !== 'candidate') {
         throw new AppError('Forbidden', 403);
       }
 

@@ -37,6 +37,7 @@ exports.AvailabilityService = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const AvailabilitySlot_1 = require("../models/AvailabilitySlot");
 const InterviewerProfile_1 = require("../../interviewer/models/InterviewerProfile");
+const RoleProfile_1 = require("../../scoring/models/RoleProfile");
 const error_1 = require("../../../core/error");
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 class AvailabilityService {
@@ -90,12 +91,9 @@ class AvailabilityService {
             },
         };
     }
-    async createSlot(interviewerId, roleProfileId, startTime) {
+    async createSlot(interviewerId, roleProfileId, startTime, price) {
         if (!mongoose_1.Types.ObjectId.isValid(interviewerId)) {
             throw new error_1.AppError('Unauthorized', 401);
-        }
-        if (!mongoose_1.Types.ObjectId.isValid(roleProfileId)) {
-            throw new error_1.AppError('Invalid roleProfileId', 400);
         }
         if (Number.isNaN(startTime.getTime())) {
             throw new error_1.AppError('Invalid startTime', 400);
@@ -103,6 +101,20 @@ class AvailabilityService {
         if (startTime.getTime() <= Date.now()) {
             throw new error_1.AppError('startTime must be in the future', 400);
         }
+        const effectiveRoleProfileId = await (async () => {
+            if (roleProfileId && mongoose_1.Types.ObjectId.isValid(roleProfileId))
+                return roleProfileId;
+            const active = await RoleProfile_1.RoleProfile.findOne({ isActive: true })
+                .sort({ updatedAt: -1, createdAt: -1 })
+                .select('_id')
+                .lean()
+                .exec();
+            if (!active) {
+                throw new error_1.AppError('Active role profile not found', 400);
+            }
+            return String(active._id);
+        })();
+        const effectivePrice = typeof price === 'number' && Number.isFinite(price) && price >= 0 ? price : 100;
         const endTime = new Date(startTime.getTime() + THIRTY_MINUTES_MS);
         const mongoSession = await mongoose_1.default.startSession();
         try {
@@ -135,11 +147,11 @@ class AvailabilityService {
                 const [slot] = await AvailabilitySlot_1.AvailabilitySlot.create([
                     {
                         interviewerId: new mongoose_1.Types.ObjectId(interviewerId),
-                        roleProfileId: new mongoose_1.Types.ObjectId(roleProfileId),
+                        roleProfileId: new mongoose_1.Types.ObjectId(effectiveRoleProfileId),
                         startTime,
                         endTime,
                         status: 'available',
-                        price: 100,
+                        price: effectivePrice,
                     },
                 ], { session: mongoSession });
                 created = slot;
@@ -149,6 +161,28 @@ class AvailabilityService {
         finally {
             await mongoSession.endSession();
         }
+    }
+    async getInterviewerSlots(interviewerId, limit = 50) {
+        if (!mongoose_1.Types.ObjectId.isValid(interviewerId)) {
+            throw new error_1.AppError('Unauthorized', 401);
+        }
+        const cappedLimit = Number.isInteger(limit) && limit >= 1 ? Math.min(limit, 100) : 50;
+        const slots = await AvailabilitySlot_1.AvailabilitySlot.find({
+            interviewerId: new mongoose_1.Types.ObjectId(interviewerId),
+        })
+            .sort({ startTime: -1 })
+            .limit(cappedLimit)
+            .select('_id startTime endTime status price createdAt')
+            .lean()
+            .exec();
+        return slots.map((s) => ({
+            id: String(s._id),
+            startTime: s.startTime,
+            endTime: s.endTime,
+            status: String(s.status),
+            price: Number(s.price ?? 0),
+            createdAt: s.createdAt ?? new Date(0),
+        }));
     }
 }
 exports.AvailabilityService = AvailabilityService;

@@ -11,6 +11,27 @@ export class AvailabilityController {
     this.availabilityService = new AvailabilityService();
   }
 
+  public getMySlots = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new AppError('Unauthorized', 401);
+      }
+
+      if (req.user.role !== 'interviewer') {
+        throw new AppError('Forbidden', 403);
+      }
+
+      const items = await this.availabilityService.getInterviewerSlots(req.user.userId);
+      sendSuccess(res, { items });
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
   public createSlot = async (
     req: Request,
     res: Response,
@@ -25,17 +46,43 @@ export class AvailabilityController {
         throw new AppError('Forbidden', 403);
       }
 
-      const { roleProfileId, startTime } = req.body as {
-        roleProfileId: string;
-        startTime: string;
+      const body = (req.body ?? {}) as {
+        roleProfileId?: unknown;
+        startTime?: unknown;
+        date?: unknown;
+        time?: unknown;
+        price?: unknown;
       };
 
-      const startDate = new Date(startTime);
+      const roleProfileId =
+        typeof body.roleProfileId === 'string' && body.roleProfileId.trim().length > 0
+          ? body.roleProfileId
+          : null;
+
+      const startTimeStr =
+        typeof body.startTime === 'string' && body.startTime.trim().length > 0
+          ? body.startTime
+          : typeof body.date === 'string' &&
+              body.date.trim().length > 0 &&
+              typeof body.time === 'string' &&
+              body.time.trim().length > 0
+            ? `${body.date}T${body.time}`
+            : '';
+
+      const startDate = new Date(startTimeStr);
+
+      const price =
+        typeof body.price === 'number'
+          ? body.price
+          : typeof body.price === 'string'
+            ? Number(body.price)
+            : undefined;
 
       const slot = await this.availabilityService.createSlot(
         req.user.userId,
         roleProfileId,
         startDate,
+        price,
       );
 
       sendSuccess(res, slot);

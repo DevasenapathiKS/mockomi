@@ -80,8 +80,12 @@ export class PaymentController {
       await paymentRecord.save();
 
       sendSuccess(res, {
-        keyId: config.razorpayKeyId,
-        order,
+        key: config.razorpayKeyId,
+        amount: order.amount,
+        currency: order.currency,
+        orderId: order.id,
+        name: 'Mockomi',
+        description: 'Mock interview session booking',
       });
     } catch (error: unknown) {
       next(error);

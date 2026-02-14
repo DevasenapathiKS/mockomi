@@ -23,6 +23,7 @@ const bookingRoutes_1 = require("./api/routes/bookingRoutes");
 const sessionRoutes_1 = require("./api/routes/sessionRoutes");
 const adminRoutes_1 = require("./api/routes/adminRoutes");
 const paymentRoutes_1 = require("./api/routes/paymentRoutes");
+const candidateRoutes_1 = require("./api/routes/candidateRoutes");
 const app = (0, express_1.default)();
 exports.app = app;
 app.use(rateLimiters_1.apiLimiter);
@@ -47,5 +48,6 @@ app.use('/api', rateLimiters_1.apiLimiter, bookingRoutes_1.router);
 app.use('/api', rateLimiters_1.apiLimiter, sessionRoutes_1.router);
 app.use('/api', rateLimiters_1.apiLimiter, adminRoutes_1.router);
 app.use('/api', rateLimiters_1.apiLimiter, paymentRoutes_1.router);
+app.use('/api', rateLimiters_1.apiLimiter, candidateRoutes_1.router);
 // Error handler must be registered last.
 app.use(errorMiddleware_1.errorMiddleware);

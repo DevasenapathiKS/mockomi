@@ -12,6 +12,7 @@ const RoleProfile_1 = require("../../scoring/models/RoleProfile");
 const ScoringModel_1 = require("../../scoring/models/ScoringModel");
 const ScoringService_1 = require("../../scoring/services/ScoringService");
 const ProgressService_1 = require("../../progress/services/ProgressService");
+const User_1 = require("../../auth/models/User");
 const error_1 = require("../../../core/error");
 const env_1 = require("../../../config/env");
 function computePerformanceTier(score) {
@@ -261,6 +262,59 @@ class InterviewService {
                 level: item.level,
                 createdAt: item.createdAt,
             })),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    async getInterviewerSessionsList(interviewerId, page, limit) {
+        if (!mongoose_1.Types.ObjectId.isValid(interviewerId)) {
+            throw new error_1.AppError('Unauthorized', 401);
+        }
+        const skip = (page - 1) * limit;
+        const filter = { interviewerId: new mongoose_1.Types.ObjectId(interviewerId) };
+        const [items, total] = await Promise.all([
+            InterviewSession_1.InterviewSession.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .select('_id status scheduledAt candidateId overallScore readinessScore readinessStatus readinessGap level createdAt')
+                .lean()
+                .exec(),
+            InterviewSession_1.InterviewSession.countDocuments(filter).exec(),
+        ]);
+        const candidateIds = Array.from(new Set(items
+            .map((i) => (typeof i.candidateId === 'string' ? i.candidateId : ''))
+            .filter((id) => mongoose_1.Types.ObjectId.isValid(id))));
+        const candidates = candidateIds.length
+            ? await User_1.User.find({ _id: { $in: candidateIds.map((id) => new mongoose_1.Types.ObjectId(id)) } })
+                .select('_id email')
+                .lean()
+                .exec()
+            : [];
+        const candidateById = new Map(candidates.map((c) => [String(c._id), { id: String(c._id), email: String(c.email ?? '') }]));
+        return {
+            items: items.map((item) => {
+                const candidateId = String(item.candidateId ?? '');
+                const candidate = mongoose_1.Types.ObjectId.isValid(candidateId) ? (candidateById.get(candidateId) ?? null) : null;
+                return {
+                    id: String(item._id),
+                    status: item.status,
+                    scheduledAt: item.scheduledAt ?? null,
+                    candidateId,
+                    candidate,
+                    overallScore: Number(item.overallScore ?? 0),
+                    readinessScore: Number(item.readinessScore ?? 0),
+                    readinessStatus: (item.readinessStatus ?? null),
+                    readinessGap: Number(item.readinessGap ?? 0),
+                    performanceTier: computePerformanceTier(Number(item.overallScore ?? 0)),
+                    level: item.level,
+                    createdAt: item.createdAt,
+                };
+            }),
             pagination: {
                 page,
                 limit,

@@ -91,8 +91,12 @@ class PaymentController {
                 paymentRecord.providerOrderId = order.id;
                 await paymentRecord.save();
                 (0, response_1.sendSuccess)(res, {
-                    keyId: env_1.config.razorpayKeyId,
-                    order,
+                    key: env_1.config.razorpayKeyId,
+                    amount: order.amount,
+                    currency: order.currency,
+                    orderId: order.id,
+                    name: 'Mockomi',
+                    description: 'Mock interview session booking',
                 });
             }
             catch (error) {

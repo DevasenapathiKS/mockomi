@@ -9,5 +9,6 @@ exports.router = router;
 const controller = new InterviewerController_1.InterviewerController();
 // Public discovery (no auth)
 router.get('/interviewers', controller.getPublicList);
+router.get('/interviewer/profile', authMiddleware_1.authenticate, controller.getMyProfile);
 router.post('/interviewer/apply', authMiddleware_1.authenticate, controller.apply);
 router.patch('/interviewer/:userId/verify', authMiddleware_1.authenticate, controller.verify);

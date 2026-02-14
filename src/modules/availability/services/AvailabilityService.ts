@@ -2,6 +2,7 @@ import mongoose, { Types } from 'mongoose';
 
 import { AvailabilitySlot } from '../models/AvailabilitySlot';
 import { InterviewerProfile } from '../../interviewer/models/InterviewerProfile';
+import { RoleProfile } from '../../scoring/models/RoleProfile';
 import { AppError } from '../../../core/error';
 
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
@@ -74,14 +75,12 @@ export class AvailabilityService {
 
   public async createSlot(
     interviewerId: string,
-    roleProfileId: string,
+    roleProfileId: string | null,
     startTime: Date,
+    price?: number,
   ) {
     if (!Types.ObjectId.isValid(interviewerId)) {
       throw new AppError('Unauthorized', 401);
-    }
-    if (!Types.ObjectId.isValid(roleProfileId)) {
-      throw new AppError('Invalid roleProfileId', 400);
     }
     if (Number.isNaN(startTime.getTime())) {
       throw new AppError('Invalid startTime', 400);
@@ -89,6 +88,25 @@ export class AvailabilityService {
     if (startTime.getTime() <= Date.now()) {
       throw new AppError('startTime must be in the future', 400);
     }
+
+    const effectiveRoleProfileId = await (async (): Promise<string> => {
+      if (roleProfileId && Types.ObjectId.isValid(roleProfileId)) return roleProfileId;
+
+      const active = await RoleProfile.findOne({ isActive: true })
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .select('_id')
+        .lean()
+        .exec();
+
+      if (!active) {
+        throw new AppError('Active role profile not found', 400);
+      }
+
+      return String(active._id);
+    })();
+
+    const effectivePrice =
+      typeof price === 'number' && Number.isFinite(price) && price >= 0 ? price : 100;
 
     const endTime = new Date(startTime.getTime() + THIRTY_MINUTES_MS);
 
@@ -130,11 +148,11 @@ export class AvailabilityService {
           [
             {
               interviewerId: new Types.ObjectId(interviewerId),
-              roleProfileId: new Types.ObjectId(roleProfileId),
+              roleProfileId: new Types.ObjectId(effectiveRoleProfileId),
               startTime,
               endTime,
               status: 'available',
-              price: 100,
+              price: effectivePrice,
             },
           ],
           { session: mongoSession },
@@ -147,6 +165,44 @@ export class AvailabilityService {
     } finally {
       await mongoSession.endSession();
     }
+  }
+
+  public async getInterviewerSlots(
+    interviewerId: string,
+    limit: number = 50,
+  ): Promise<
+    Array<{
+      id: string;
+      startTime: Date;
+      endTime: Date;
+      status: string;
+      price: number;
+      createdAt: Date;
+    }>
+  > {
+    if (!Types.ObjectId.isValid(interviewerId)) {
+      throw new AppError('Unauthorized', 401);
+    }
+
+    const cappedLimit = Number.isInteger(limit) && limit >= 1 ? Math.min(limit, 100) : 50;
+
+    const slots = await AvailabilitySlot.find({
+      interviewerId: new Types.ObjectId(interviewerId),
+    })
+      .sort({ startTime: -1 })
+      .limit(cappedLimit)
+      .select('_id startTime endTime status price createdAt')
+      .lean()
+      .exec();
+
+    return slots.map((s) => ({
+      id: String(s._id),
+      startTime: s.startTime as Date,
+      endTime: s.endTime as Date,
+      status: String(s.status),
+      price: Number(s.price ?? 0),
+      createdAt: (s.createdAt as Date) ?? new Date(0),
+    }));
   }
 }
 
